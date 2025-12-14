@@ -132,11 +132,4 @@ Ce module est distribué sous licence LGPL-3.
 
 ---
 
-## Installation locale rapide
-
-```bash
-./automate_project_setup.sh
-./setup_odoo17.sh
-```
-
 - Accédez à http://localhost:8069 et installez le module EBMS Connector via Applications.
