@@ -117,13 +117,6 @@ Le module est maintenant prêt à être utilisé.
 ### Logs
 Les logs EBMS sont disponibles dans les logs Odoo avec le tag `ebms_connector`.
 
-## 📞 Support
-
-Pour toute assistance :
-- 📧 Email : support@ebms-connector.com
-- 📱 Documentation : Voir `/static/description/index.html`
-- 🐛 Issues : Rapporter les bugs via le système de tickets
-
 ## 📄 Licence
 
 Ce module est distribué sous licence LGPL-3.
@@ -131,7 +124,7 @@ Ce module est distribué sous licence LGPL-3.
 ## 🔄 Versions
 
 - **v1.0** : Version initiale avec fonctionnalités de base
-- Compatible avec **Odoo 16**
+- Compatible avec **Odoo 17**
 
 ---
 
