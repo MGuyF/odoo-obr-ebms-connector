@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>EBMS Connector</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .header { background: #875A7B; color: white; padding: 20px; border-radius: 5px; }
+        .content { margin: 20px 0; }
+        .feature { margin: 10px 0; padding: 10px; background: #f9f9f9; border-radius: 3px; }
+        .code { background: #f4f4f4; padding: 10px; border-radius: 3px; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔗 EBMS Connector</h1>
+        <p>Connecteur officiel pour l'intégration EBMS (Electronic Billing Management System) du Cameroun</p>
+    </div>
+
+    <div class="content">
+        <h2>🚀 Fonctionnalités</h2>
+        
+        <div class="feature">
+            <h3>✅ Envoi automatique des factures</h3>
+            <p>Envoyez vos factures clients directement vers le système EBMS depuis Odoo avec un simple clic.</p>
+        </div>
+
+        <div class="feature">
+            <h3>📊 Suivi du statut</h3>
+            <p>Suivez le statut d'envoi de chaque facture : Brouillon, Envoyé, ou Erreur.</p>
+        </div>
+
+        <div class="feature">
+            <h3>🔄 Gestion des erreurs</h3>
+            <p>Messages d'erreur détaillés et possibilité de renvoyer les factures en cas d'échec.</p>
+        </div>
+
+        <div class="feature">
+            <h3>🎯 Interface intuitive</h3>
+            <p>Bouton intégré dans le formulaire de facture, indicateurs visuels, et filtres de recherche.</p>
+        </div>
+
+        <h2>📋 Installation</h2>
+        <div class="code">
+1. Copier le module dans le répertoire addons d'Odoo<br>
+2. Redémarrer Odoo avec --update=all<br>
+3. Aller dans Applications > EBMS Connector<br>
+4. Cliquer sur "Installer"
+        </div>
+
+        <h2>⚙️ Configuration</h2>
+        <p>Le module fonctionne en mode simulation par défaut. Pour l'intégration réelle :</p>
+        <div class="code">
+Paramètres système :<br>
+- ebms.api_url : URL de l'API EBMS<br>
+- ebms.api_token : Token d'authentification EBMS
+        </div>
+
+        <h2>🎯 Utilisation</h2>
+        <ol>
+            <li>Créez et validez une facture client</li>
+            <li>Cliquez sur "Envoyer à EBMS" dans le header</li>
+            <li>Suivez le statut dans l'onglet "Autres informations"</li>
+        </ol>
+
+        <h2>📞 Support</h2>
+        <p>Pour toute assistance technique, contactez l'équipe EBMS Connector.</p>
+    </div>
+</body>
+</html>

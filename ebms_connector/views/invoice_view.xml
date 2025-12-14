@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Héritage de la vue formulaire des factures -->
+        <record id="view_move_form_inherit_ebms" model="ir.ui.view">
+            <field name="name">account.move.form.inherit.ebms</field>
+            <field name="model">account.move</field>
+            <field name="inherit_id" ref="account.view_move_form"/>
+            <field name="arch" type="xml">
+                
+                <!-- Ajout du bouton EBMS dans le header -->
+                <xpath expr="//header" position="inside">
+                    <button name="action_send_ebms" 
+                            type="object" 
+                            string="Envoyer à EBMS" 
+                            class="btn-primary"
+                            x-invisible="{'invisible': ['|', ('move_type', 'not in', ['out_invoice', 'out_refund']), ('state', '!=', 'posted')]}"
+                            confirm="Êtes-vous sûr de vouloir envoyer cette facture vers EBMS ?"/>
+                    
+                    <button name="action_reset_ebms_status" 
+                            type="object" 
+                            string="Réinitialiser EBMS" 
+                            class="btn-secondary"
+                            x-invisible="{'invisible': ['|', ('move_type', 'not in', ['out_invoice', 'out_refund']), ('ebms_status', '=', 'draft')]}"
+                            confirm="Êtes-vous sûr de vouloir réinitialiser le statut EBMS ?"/>
+                    
+                    <button name="ebms_manual_signature_check" 
+                            type="object" 
+                            string="Vérifier Signature EBMS" 
+                            class="btn-secondary"
+                            x-invisible="{'invisible': [('ebms_signature', '=', False)]}"
+                            confirm="Ceci va vérifier la validité de la signature électronique avec la clé publique de l'OBR. Continuer ?"/>
+                </xpath>
+
+                <!-- Ajout des champs EBMS dans l'onglet "Autres informations" -->
+                <xpath expr="//page[@name='other_info']" position="inside">
+                    <group string="Informations EBMS" name="ebms_info">
+                        <field name="ebms_status" widget="badge" 
+                               decoration-success="ebms_status == 'sent'"
+                               decoration-danger="ebms_status == 'error'"
+                               decoration-info="ebms_status == 'draft'"/>
+                        <field name="ebms_reference" x-invisible="{'invisible': [('ebms_reference', '=', False)]}"/>
+                        <field name="ebms_sent_date" x-invisible="{'invisible': [('ebms_sent_date', '=', False)]}"/>
+                        <field name="ebms_error_message" 
+                               x-invisible="{'invisible': [('ebms_error_message', '=', False)]}"
+                               widget="text"/>
+                    </group>
+                </xpath>
+
+                <!-- Ajout d'un indicateur visuel dans le header pour le statut EBMS -->
+                <xpath expr="//div[hasclass('oe_button_box')]" position="after">
+                    <div class="alert alert-success" role="alert" 
+                         x-invisible="{'invisible': [('ebms_status', '!=', 'sent')]}"
+                         style="margin: 10px;">
+                        <strong>✓ Facture envoyée à EBMS</strong>
+                        <br/>
+                        <span>Référence: <field name="ebms_reference" readonly="1"/></span>
+                    </div>
+                    
+                    <div class="alert alert-danger" role="alert" 
+                         x-invisible="{'invisible': [('ebms_status', '!=', 'error')]}"
+                         style="margin: 10px;">
+                        <strong>⚠ Erreur d'envoi EBMS</strong>
+                        <br/>
+                        <span><field name="ebms_error_message" readonly="1"/></span>
+                    </div>
+                </xpath>
+
+            </field>
+        </record>
+
+        <!-- Vue liste avec colonne statut EBMS -->
+        <record id="view_invoice_tree_inherit_ebms" model="ir.ui.view">
+            <field name="name">account.move.tree.inherit.ebms</field>
+            <field name="model">account.move</field>
+            <field name="inherit_id" ref="account.view_invoice_tree"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='amount_total_signed']" position="after">
+                    <field name="ebms_status" 
+                           widget="badge" 
+                           decoration-success="ebms_status == 'sent'"
+                           decoration-danger="ebms_status == 'error'"
+                           decoration-info="ebms_status == 'draft'"
+                           optional="show"/>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- Filtre de recherche pour le statut EBMS -->
+        <record id="view_account_invoice_filter_inherit_ebms" model="ir.ui.view">
+            <field name="name">account.move.select.inherit.ebms</field>
+            <field name="model">account.move</field>
+            <field name="inherit_id" ref="account.view_account_invoice_filter"/>
+            <field name="arch" type="xml">
+                <xpath expr="//filter[@name='late']" position="after">
+                    <separator/>
+                    <filter string="EBMS Brouillon" name="ebms_draft" domain="[('ebms_status', '=', 'draft')]"/>
+                    <filter string="EBMS Envoyé" name="ebms_sent" domain="[('ebms_status', '=', 'sent')]"/>
+                    <filter string="EBMS Erreur" name="ebms_error" domain="[('ebms_status', '=', 'error')]"/>
+                </xpath>
+                
+                <xpath expr="//search" position="inside">
+                    <filter string="Statut EBMS" name="group_ebms_status" context="{'group_by': 'ebms_status'}"/>
+                </xpath>
+            </field>
+        </record>
+
+    </data>
+</odoo>

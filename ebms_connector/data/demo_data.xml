@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- Paramètres système pour la démo -->
+        <record id="ebms_demo_api_url" model="ir.config_parameter">
+            <field name="key">ebms.api_url</field>
+            <field name="value">https://demo.ebms.cm/api/v1/invoices</field>
+        </record>
+        
+        <!-- Note: Le token doit être configuré manuellement pour la sécurité -->
+        
+    </data>
+</odoo>

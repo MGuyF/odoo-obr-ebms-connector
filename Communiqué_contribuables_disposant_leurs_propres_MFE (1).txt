@@ -1,0 +1,2688 @@
+“Je suis fier de contribuer à la construction du Burundi”
+
+COMMISSARIAT GENERAL
+N/Réf : 540/92/CG/01/§.
+
+7\./JCM/2023
+
+COMMUNIQUE AUX CONTRIBUABLES DISPOSANT DE LEURS
+PROPRES SYSTEMES DE FACTURATION ELECTRONIQUE
+Dans le cadre de la mise en place du système de facturation électronique,
+l'Office Burundais des Recettes (OBR) porte à la connaissance des
+contribuables utilisant leurs propres systèmes de facturation qu'il a mis à
+jour le document des spécifications techniques d'interfaçage avec le
+système EBMS.
+Cette mise à jour concerne principalement une fonctionnalité dont le rôle
+est d'accuser réception lors de l’ajout d'une facture dans le système EBMS
+et l'ajout de nouvelles taxes selon la nouvelle loi budgétaire 2023 -2024.
+
+Ce document mis à jour est disponible sur le site web de 'OBR (www.obr.bi)
+
+et peut être également obtenu au près des directions ayant la gestion des
+
+contribuables dans leurs attributions.
+Un délai de trente (30) jours calendaires est accordé pour terminer les
+adaptations nécessaires. Après ce délai, l’ancien lien qui permettait l’ajout
+des factures dans le système EBMS sans la fonction d’accuser réception ne
+sera plus disponible.
+
+Bujumbura, le 402./-Ad1../2023
+
+Jean Claude
+
+MANIRAKIZA
+
+Immeuble VIRAGO COMPLEX, Quartier Industriel, Avenue de la Tanzanie, N°936a/A, Tél : (+257) 22 28 21 32 - B.P. 3465 Bujumbura
+
+11 - ohr.directiontabr.gou.bi = www.obr.bl
+
+<BR Office Burundais des Recettes
+“Je suis fier de contribuer
+à la construction du Burundi”
+
+COMMISSARIAT GENERAL
+N/REF :540/92/CG/01/£?:Ï.L.Î.Â/JCM/2023
+
+SPECIFICATIONS TECHNIQUES DE L'INTERFACAGE AVEC EBMS
+(Electronic Billing Management System)
+
+VERSION DU DOCUMENT
+Date
+
+Version | Auteur
+
+Description
+
+15/12/2021
+
+|V 0.1
+
+OBR
+
+Création du document
+
+11/05/2022
+24/11/2022
+16/03/2023
+
+|V 0.2
+|V 0.3
+|V 0.4
+
+OBR
+OBR
+OBR
+
+Mise a jour du document
+Mise à jour du document
+Mise a jour
+-Ajout de la fonction
+mouvements de stock
+
+28/111/2023
+
+|V 0.5
+
+OBR
+
+denvoi
+
+des
+
+Mise a jour :
+-
+
+-
+
+Ajout d’une réponse pour accuser
+
+réception des factures par le
+système EBMS
+Ajout des nouvelles taxes de la loi
+budgétaire 2023-2024
+
+Note: Ce document est la propriété intellectuelle de l’Office Burundais des Recettes
+(OBR). Il est strictement interdit de le modifier, le copier, le reproduire ou le publier
+
+à moins d'y avoir été expressément autorisé par l’OBR.
+
+*
+
+Page 1 of 33
+
+TABLE DES MATIÈRES
+
+I.
+
+INTRODUCTION..........…...….….….….….….…….
+
+II. COMMENT FAIRE L'INTEGRATION
+I. METHODE D'AUTHENTIFICATION (login)
+IV.
+
+METHODE DE VERIFICATION DE FACTURE (getInvoice) ……
+
+V. METHODE D'AJOUT DE FACTURE (addInvoiC@)..…..…..…….rrrererenencees
+VI.
+
+METHODE DE VERIFICATION DU NIF (CheckTIN)..………..…..….…..…rreecsees
+
+VII.
+
+METHODE D'ANNULATION DE FACTURE (cancellnvoice)..
+
+A
+
+VIII. METHODE D’AJOUT DE MOUVEMENTS DE STOCK (AddStockMovement) … 30
+IX,
+
+CODES DE STATUTS.…......ecccrerssncecrrrenrnanrre
+rn nnrararrranan srr ce rrc rrrn 32
+
++
+
+Page 2 of 33
+
+ABBREVIATION ET SIGLES
+API
+
+: Application Programming Interface
+
+eBMS: electronic Billing Management System
+FA
+: Facture d’avoir
+FN: Facture Normale
+HTTP: Hypertext Transfer Protocol
+HTVA : Hors Taxe sur la Valeur Ajoutée
+IP : Internet Protocol
+JSON: JavaScript Object Notation
+NIF : Numéro d’Identification Fiscal
+OBR : Office Burundais des Recettes
+PFL : Prélèvement Forfaitaire Libératoire
+PU _ : Prix Unitaire
+Q : Quantité
+RC : Remboursement de Caution
+REST : Representational State Transfer
+
+RHF : Réduction Hors Facturation
+RSA : Algorithme de cryptage asymétrique (inventé par Ronald Rivest, Adi Shamir
+et Leonard Adleman)
+SHA-256 : Secure Hash Algorithm (algorithme de la famille des fonctions de
+hachage conçues par la National Security Agency des Etats-Unis)
+TC : Taxe de Consommation
+TTC : Toutes Taxes Comprises
+
+TVAC : Taxe sur la Valeur Ajoutée Comprise
+URL : Uniform Resource Locator
+
+".
+
+Paae 3 of 33
+
+I. INTRODUCTION
+Les dispositions légales ,en l’occurrence l’article 47 de la loi n° 1/10 du 16
+novembre 2020 portant modification de la loi N° 1/12 du 19 juillet 2013 portant
+révision de la loi N°1/02 du 17 février 2009 portant institution de la Taxe sur la
+Valeur Ajoutée « TVA » ; l’article 40 de la loi N°1/14 du 24 décembre 2020 portant
+modification de la loi N°1/02 du 24 janvier 2013 relative aux impôts sur les revenus
+; l’article 112 de la loi n°1/20 du 25 juin 2021 portant fixation du budget général
+de la République du Burundi pour l’exercice 2021/2022 ainsi que l’Ordonnance du
+
+Ministre ayant les finances dans ses attributions n°540/48 du 24/01/2022 portant
+
+détermination des conditions d'obtention et d'utilisation de la machine de
+facturation électronique obligent les contribuables d’utiliser une machine de
+facturation électronique agréée par I'OBR .
+Ce faisant, dans le cadre de mise en application desdites dispositions, il a été
+
+demandé aux contribuables possédant leurs propres systèmes de facturation
+électroniques de procéder aux adaptations nécessaires afin qu'ils puissent
+permettre le transfert des données en temps réel vers les serveurs de l’OBR.
+A cet effet, l'OBR a mis en place un système de gestion de la facturation
+électronique (eBMS) et des services web (API).
+Ce document présente donc les modalités qui définiront les opérations et la
+structure des données qui seront échangées via l’interface eBMS.
+
+II.
+
+COMMENT FAIRE L'INTEGRATION
+
+Cette interface utilise la technologie des services Web et est implémentée en tant
+que serveur. Cela signifie que I'autre partie doit étre implémentée en tant que
+
+client de ce service Web pour l’utiliser.
+
+Les services Web utilisent la technologie REST. Toutes les méthodes présentées
+dans ce document envoient les informations avec la méthode POST.
+L’envoi des factures doit se faire en temps réel. C'est-a-dire, qu'à chaque fois
+qu’une facture est émise dans le système client (le système du contribuable) pour
+impression, une copie de la même facture doit être envoyée via les services web à
+
+l’administration fiscale. En cas d’échec, pour une raison ou une autre, le système
+doit I'enregistrer et continuer à essayer de la renvoyer jusqu’a ce que la facture
+
+soit bien reçue par l’administration fiscale. Une réponse en cas de succès ou
+d’échec est retournée au client ainsi qu’un message explicatif. Un identifiant de la
+
+facture doit être ajoutée, en clair sur chaque facture avant son impression. Le
+
+format de cet identifiant est décrit dans ce document. Cet identifiant est généré
+par le système du contribuable (système client).
+
+4
+
+Pace 4 of 33
+
+II.1. FACTURATION
+II.1.1 TYPE DE FACTURE
+Les types de factures ou documents acceptés par le système sont les suivants :
+
+a. FACTURE NORMALE (FN)
+C’est une facture ordinaire de vente. Les contribuables sont libres de choisir leur
+propre format de numérotation mais la taille du numéro de facture ne doit pas
+dépasser 30 caractères.
+Lorsqu‘une facture est annulée (notamment en cas d’erreur ou de retour
+des
+marchandises), une autre facture doit être établie en remplacement de la premièr
+e
+
+et doit avoir la référence de la facture qu'elle remplace.
+Notons que la première facture n’est pas à supprimer. Un champ nommé «
+cancelled_invoice_ref » a été ajouté à cet effet.
+S'il n'y a pas nécessité de créer une nouvelle facture, vous pouvez juste annuler la
+facture avec la méthode « cancelInvoice ».
+b. FACTURE D'AVOIR (FA)
+
+La facture d’avoir (note de crédit) peut être utilisée dans différentes situations. Elle
+
+peut intervenir notamment :
+
+-
+
+En cas d’erreur sur la facture : si vous vous êtes trompé sur une facture qui
+a déjà été envoyée à votre client, il vous faut impérativement en émettre
+une nouvelle afin de comptabiliser la différence de montant.
+Par exemple, si vous avez facturé 550 euros de marchandise au lieu de 500
+
+euros. La facture d'avoir fera mention des 50 euros de trop-perçu.
+-
+
+-
+
+-
+
+En cas de retour de marchandise : si un client n’est pas satisfait de la
+marchandise reçue, et souhaite la renvoyer, il peut faire une demande
+d'avoir sur facture. Il faut alors émettre une facture d’avoir pour annuler
+comptablement le paiement réalisé.
+En cas de geste commercial : il peut être utile de faire bénéficier d'une
+remise à un client (pour le fidéliser ou pour compenser une erreur de votre
+part), d’un rabais’ une ristourne périodique ou un escompte.
+En cas de réduction hors facture faite au client c’est-a-dire après que la vente
+ait lieu, pour constater cette réduction.
+
+Pour chaque cas, l’on doit spécifier quel type de facture d'avoir il s’agit (erreur
+
+,
+
+retour marchandises, rabais, remise ou ristourne) dans le champ « cn_moti
+f »
+
+prévu à cet effet. Il faut aussi fournir le numéro de facture qu’elle concerne en
+référence dans le champ « invoice_ref ».
+Le montant de la facture d’avoir ne doit pas être supérieur au montant de la facture
+dont il fait objet.
+‘#
+
+Pade 5 of 33
+
+c. REMBOURSEMENT CAUTION (RC)
+
+En cas de remboursement d’une caution sur une facture, un nouveau document
+
+est créé pour constater le remboursement. Un champ « invoice_ref » a été ajouté
+
+pour référencer le numéro de la facture dont le remboursement concerne.
+
+N.B. : Un champ « invoice_type » permet de distinguer une facture normale de
+vente normale (FN), une facture d’avoir (FA) ou un document de remboursement
+de caution (RC). Chaque type de facture ou document doit avoir une numérotation
+différente des autres types de facture et constituée d’une séquence de chiffre
+suivant un ordre chronologique, continue et sans rupture.
+II.1.2 ACCUSE DE RECEPTION
+Lorsqu'une facture arrive dans le système eBMS, ce dernier génère un message de
+
+confirmation et une signature électronique. Ces informations sont stockées dans le
+
+système eBMS et doivent être stockées en même temps par le système du
+
+contribuable comme accusé de réception.
+
+Le processus va se dérouler comme suit :
+-
+
+Lorsque le système du contribuable envoie une facture, il reçoit en retour
+
+une réponse selon que la facture a été ajoutée ou pas dans le système
+eBMS ;
+
+-
+
+En cas d’échec, il reçoit un code http et un message décrivant la raison de
+l’échec ;
+
+Exemple :
+Status
+
+Réponse
+
+400
+
+{
+
+}
+-
+
+“success”: false,
+"msg":"Le format de la chaine de caractère JSON est invalide."
+
+Encas de succès, le système du contribuable reçoit une réponse avec le code
+http 200 qui veut dire succès de l’opération, la variable « success » avec une
+
+valeur « true », un message de succès dans le champ « msg », le message
+
+de confirmation dans le champ « result » ainsi qu’une signature électronique
+dans le champ « electronic_signature ».
+-
+
+Le champ « result » contient les informations suivantes :
+
+o Le numéro de la facture envoyée ;
+
+o Le numéro de référence attribué à la facture dans la base de données de
+l'OBR ;
+
+o
+-
+
+La date d’enregistrement au format « AAAA-MM-JJ HH: MM:SS » ;
+
+La signature électronique, qui est le contenu du champ « result » qui est :
+o Haché en utilisant l’algorithme de hachage SHA256 ;
+
+o Crypté avec l’algorithme de cryptage RSA avec une clé privée ;
++
+
+Page 6 of 33
+
+o
+
+Encodé en base64 et envoyé dans le champ « electronique_signature
+> ;
+
+Exemple :
+Réponse
+
+Status
+200
+
+": true,
+a faclure a été ajoutée avec succès!",
+onique_signature":
+
+"9a2a3f27dd833f6£4a069235ce165/23be1b7340",
+
+:
+
+"4530253",
+
+2023-05-12 10:04:23"
+
+Les systèmes des contribuables doivent enregistrer automatiquement cette
+signature électronique cryptée ainsi que le message envoyé par le système
+eBMS. Cette signature servira de preuve que la facture envoyée a été bien
+reçue par l’OBR. Lorsque ce numéro n’a pas été reçu, cela veut dire que le
+message n’a pas été reçue par I'OBR. Il appartient alors au système du
+contribuable de renvoyer automatiquement la facture, tout comme cela est
+fait pour tout autre problème d’envoi.
+Lorsque cela s'avère nécessaire, la vérification s’effectuera comme suit :
+o
+
+Décoder avec base64 la chaine de caractère se trouvant dans le champ
+« electronic_signature » pour avoir le message crypté ;
+
+o Décrypter le message obtenu avec l’algorithme de cryptage RSA et une
+clé publique que l’OBR va leur fournir préalablement. Une clé publique
+générée chaque année ou chaque fois que de besoin sera envoyé à
+l’adresse email que le contribuable va fournir ou sera téléchargeable sur
+le site web de I'OBR (www.obr.gov.bi). La période de validité de la clé
+publique sera spécifiée en précisant la date et I'heure de début et de fin
+de validité ;
+o Hacher le message contenu dans le champ « result » (tout le contenu
+sous
+format
+json.
+Exemple : « {"invoice_number": "0001/2021",
+"invoice_registered_number": "4530253","invoice_registered_date":"20
+
+23-05-12 10:04:23"} ») avec l’algorithme de hachage SHA-256 F
+o Comparer le résultat du décodage et du décryptage du champ
+« electronic_signature » avec et le résultat du hachage du champ
+« result » ;
+o Si les valeurs deux sont identiques, c’est-a-dire que signature et les
+données sont valides. En d’autres mots, c’est-a-dire que l’OBR a bien reçu
+
+4
+
+Page 7 of 33
+
+la facture et I'a enregistré avec le numéro d’enregistrement et à la date
+fournie dans le message.
+II.2. STOCK
+
+Les systèmes des contribuables doivent permettre d’envoyer les données de stock
+relatives aux marchandises destinées à la vente chaque fois qu'il y a une opération
+d’entrée ou de sortie de stock. Les mouvements de stock peuvent être de types
+suivants :
+- Entrées
+
+Normales
+
+(EN):
+
+ce
+
+sont
+
+des
+
+entrées
+
+qui
+
+proviennent
+
+des
+
+approvisionnements de marchandises ;
+
+- Entrées en cas de Retour de marchandise (ER) : ce sont des entrées
+provenant des retours de marchandises par les clients de l’entreprise ;
+- Entrées d’Inventaire (EI) : il s'agit des quantités réelles de stock constaté lors
+des inventaires physiques ;
+- Entrées d’Ajustement (EAJ) : ce sont des entrées de stock pour faire
+I'ajustement entre le stock réel et le stock théorique (stock se trouvant dans
+le système) ;
+- Entrées Transfert des articles (ET) : il s’agit d’un transfert d'articles entre
+deux ou plusieurs stocks du même contribuable ;
+- Entrées Autres (EAU) : ce sont d'autres entrées qui peuvent survenir et qui
+ne sont pas citées ;
+- Sorties
+
+Normales
+
+(SN):
+
+ce
+
+sont des sorties
+
+marchandises ;
+
+normales
+
+de ventes de
+
+- Sorties Perte (SP): ce sont des sorties de stock en cas de perte de
+
+marchandises (y doit y avoir un document officiel de constatation de perte) ;
+- Sorties Vol (SV) : ce sont des sorties des articles qui ont été volés (y doit y
+avoir un document officiel de constatation de vol) ;
+
+- Sorties Désuétudes/périmées ou obsolètes (SD) : ce sont des sorties de
+marchandises qui sont devenues désuète/périmées ou obsolètes ;
+- Sorties Casse (SC) : ce sont des sorties de marchandises en cas de casse ;
+- Sorties Ajustement (SAJ) : il s’agit des sorties de stock pour faire l’ajustement
+entre le stock réel et le stock dans le système ;
+- Sorties Transfert (ST) : il s’agit d’un transfert d'articles entre deux ou
+plusieurs stocks du même contribuable ;
+
+- Sortie Autres (SAU) : ce sont d’autres types de sorties qui ne sont pas citées
+dans ce document.
+Pour les entrées et les sorties qui ne sont pas normales (achat/production ou
+
+ventes) un champ (« item_movement_description ») a été prévu pour ajouter une
+description afin de donner d’autres précisions si nécessaire.
+En cas de retour marchandise, un champ « item_movement_invoice_ref » a été
+mise en place pour spécifier le numéro de la facture concernée.
+
+Pour toute transaction du client vers le serveur, une clé d‘authentification valide
+doit être envoyé en entête. Sinon un message d’erreur sera envoyé. La clé est
+obtenue via une fonction d’authentification en fournissant un identifiant et un mot
++
+
+Page 8 of 33
+
+de passe fournis par I'administration fiscale. Ces identifiants sont obtenus en
+
+adressant une demande à l’email
+: facturation.electronique@obr.gov.bi ou en
+
+appelant au numéro 22 28 24 59.
+
+Les liens qui se trouvent dans ce document sont des liens permettant l’accès sur
+
+les serveurs de tests. Les liens vers le serveur de production vous seront
+communiqué si les tests sont concluants et un autre identifiant et un mot de passe
+
+vous seront fournis afin de se connecter sur le serveur de production.
+
+Les données qui sont utilisées dans ce document sont des données d’exemple. Il
+faut les remplacer par les vôtres lors de l’implémentation.
+L'interface eBMS a des fonctions répertoriées dans le tableau ci-dessous :
+
+Méthode | URL
+
+Usage
+
+POST
+
+Génère
+
+un
+
+jeton
+
+pour
+
+https://ebms.obr.gov.bi:9443/ebms api/login/
+
+accéder aux
+autres
+
+POST
+
+POST
+
+fonctions
+Permet
+d’obtenir les
+détails d’une
+facture
+https://ebms.obr.gov.bi:9443/ebms api/addInvoice confirm/ | Permet
+https://ebms.obr.gov.bi:9443/ebms api/getInvoice/
+
+d’ajouter
+
+N.B. : Le nouveau lien ci-haut remplace l’ancien sans accusé | une factureà
+
+POST
+
+de réception en dessous
+
+la
+
+https://ebms.obr.gov.bi:9443/ebms api/addInvoice/
+https://ebms.obr.gov.bi:9443/ebms api/checkTIN/
+
+données.
+Permet
+de
+vérifier si un
+NIF
+donné
+est valide ou
+
+base
+
+de
+
+non
+POST
+
+POST
+
+https://ebms.obr.gov.bi:9443/ebms api/cancelInvoice/
+
+Permet
+d’annuler
+une facture
+https://ebms.obr.gov.bi:9443/ebms api/AddStockMovement/ | Permet
+d’ajouter les
+mouvements
+
+de stock
+
+'*
+
+Page 9 of 33
+
+Toutes les demandes et réponses sont au format JSON. Ci-après les détails sur les
+paramètres JSON :
+Paramètre
+
+Type
+
+username
+
+Chaine de | 30
+caractères
+
+Nom d'utilisateur du contribuable
+
+password
+
+Chaine
+
+Le mot de passe du contribuable
+
+success
+
+caractères
+Booléen
+
+msg
+
+Texte
+
+Le message de retour
+
+result
+
+Texte
+
+Contient le résultat de l’opération
+
+Taille | Description
+
+de | 30
+
+Renvoie vrai si l’opération a réussi et
+faux dans les autres cas
+
+electronic_signature | Text
+
+Champ
+
+contenant
+la
+signature
+électronique envoyé au contribuable
+lors de la réception de la facture
+Numéro d’enregistrement de la facture
+dans la base de données eBMS
+Date d’enregistrement de la facture
+dans l’'eBMS
+Format: “YYYY-MM-DD hh:mm:ss”
+Un jeton (clé) à envoyer dans l’en-tête
+pour d'autres appels d’API
+Le numéro de la facture
+
+invoice_registered_ | Texte
+number
+invoice_registered_ | Date heure
+date
+token
+invoice_number
+
+Chaine de
+caractères
+Chaine de |30
+
+caractères
+invoice_date
+
+Date heure
+
+invoice_type
+
+Chaine de
+
+Date de facturation
+Format: "YYYY-MM-DD hh:mm:ss”
+Type de facture. La facture peut être :
+
+|5
+
+caractères
+
+invoices
+
+-
+
+« FN » Facture normale
+
+-
+
+« FA » Facture d’Avoir
+
+-
+
+« RC » Remboursement caution
+
+-« RHF » Réduction Hors Facture
+Chaine de
+caractères
+
+Un tableau qui contient les factures
+retournées lors d’une recherche la
+fonction getInvoice
+
+tp_type
+
+tp_name
+
+Chaine
+
+de|5
+
+Type de contribuable.
+
+caractères
+
+Valeur « 1 » pour personne physique et
+
+Chaine de|100
+
+« 2 » pour personne morale
+|Nom
+et
+prénom
+pour
+
+caractères
+
+physique
+
+ou
+
+nom
+
+personne
+
+commercial
+
+pour
+
+personne morale
+tp_TIN
+
+Chaine
+
+de
+
+|30
+
+NIF du contribuable
+
+caractères
+
+4
+
+Page 10 of 33
+
+tp_trade_number
+
+Chaine de |20
+caractères
+tp_postal_number
+Chaine de | 20
+caractères
+tp_phone_number | Chaine de |20
+caractères
+tp_address_provinc | Chaine de | 50
+e
+caractères
+tp_address_commu | Chaine de | 50
+
+ne
+
+Le numéro du registre de commerce du
+contribuable
+Boite postale du contribuable
+Numéro de téléphone du contribuable
+Adresse du contribuable
+:
+Province
+Adresse du contribuable : commune
+
+caractères
+
+tp_address_quartier | Chaine de | 50
+caractères
+tp_address_avenue | Chaine de | 50
+caractères
+tp_address_rue
+Chaine de | 50
+caractères
+tp_address_number | Chaine de | 10
+caractères
+vat_taxpayer
+Chaine de |3
+
+ct_taxpayer
+
+Adresse du contribuable : quartier
+Adresse du contribuable : avenue
+Adresse du contribuable : rue
+Adresse du contribuable : numéro
+Assujetti a la TVA
+
+caractéres
+
+Valeur : « 0 » pour un non assujetti ou
+« 1 » pour un assujetti
+
+Chaine de |3
+caractères
+
+Assujetti à la taxe de consommation
+Valeur : « 0 » pour un non assujetti ou
+« 1 » pour un assujetti
+
+tl_taxpayer
+
+Chaine de |3
+caractères
+
+Assujetti au
+libératoire
+
+prélèvement forfaitaire
+
+Valeur : « 0 » pour un non assujetti ou
+tp_fiscal_center
+
+Chaine
+
+de | 20
+
+caractères
+
+« 1 » pour un assujetti
+Le centre fiscal du
+
+contribuable.
+
+Compléter par:
+- « DGC » pour Direction des Grands
+contribuables ;
+-
+
+« DMC » pour Direction des Moyens
+
+Contribuables ;
+-
+
+tp_activity_sector
+
+‘
+tp_legal_form
+payment_type
+
+« DPMC » pour Direction des Petits
+
+et Micro Contribuables.
+Chaine de|250 | Le secteur d’activité du contribuable
+
+caractères
+
+Chaine de | 50
+caractères
+Chaine de | 4
+
+Type de paiement de la facture
+
+caractères
+
+Valeur : « 1 » en espèce
+
+La forme juridique du contribuable
+
+« 2 » banque
+Page 11 of 33
+
+customer_name
+customer_TIN
+
+customer_address
+
+« 3 » à crédit
+« 4 » autres
+|100 | Nom du client
+
+Chaine de
+caractères
+Chaine de | 50
+
+NIF du client, s’il en a.
+
+caractères
+
+N.B. : Ce champ n’est pas obligatiore
+
+Chaine de
+
+dans la fonction addInvoice mais si le
+NIF est fourni, il doit être valide. La
+fonction checkTIN permet de faire une
+vérification de la validité du NIF
+|100 | Adresse du client
+
+caractères
+vat_customer_paye | Chaine de
+r
+
+|3
+
+caractères
+
+Si le client est assujetti à la TVA
+Valeur : « O » pour un non assujetti ou
+« 1 » pour un assujetti
+
+cancelled_invoice_r | Chaine de |4
+ef
+caracteres
+cancelled_invoice
+Chaine de
+caracteres
+
+invoice_ref
+
+cn_motif
+invoice_identifier
+
+Chaine de | 30
+caractère
+
+Numéro de référence de la facture
+annulée
+Montre qu’une facture est considérée
+comme annulée ou pas. Il peut avoir les
+valeurs suivantes :
+-
+
+« N » sila facture n’est pas
+
+-_
+
+annulée ;
+<Y » si la facture a été annulée.
+
+Numéro de référence de la facture qui
+fait objet d’une facture d’avoir ou de
+remboursement caution
+Chaine de | 500 | Motif de création de la facture d'avoir
+caractères
+Chaine de | 90
+Identifiant unique de la facture
+caractères
+Format :
+<NIF du contribuable>/<Identification
+
+du système du contribuable>/<date,
+heure,
+minute,
+seconde
+facturation>/<Numéro facture>
+
+de
+
+Ex :
+400020202/ws400000000100001/202
+20110173045/00001
+
+N.B. : L'identifiant système est celui
+fourni avec un mot de passe afin de se
+
+invoice_currency
+
+Chaine de|5
+
+connecter au système
+Type de monnaie de facturation. Les
+
+caractères
+
+choix
+
+sont:
+« EUR ».
+
+« BIF»,
+
+«USD»
+
+et
+
+Pana 19 nf 22
+
+invoice_items
+item_designation
+item_quantity
+item_price
+item_ct
+item_tl
+
+Le champ n’est pas obligatoire. Si rien
+n’est envoyé, le système considère par
+défaut que c’est le « BIF »
+Chaine de
+Tableau qui contient l’ensemble des
+caractères
+articles sur la facture
+Chaine de |500 | Désignation de l’article
+caractères
+Float
+Quantité (Q) de l’article
+Double
+Le prix unitaire (PU) de l’article
+Double
+Taxe de Consommation (TC)
+Double
+Prélèvement . Forfaitaire Libératoire
+
+(PFL)
+
+item_tsce_tax
+
+Double
+
+item_ott_tax
+
+Double
+
+Taxe spécifique des services à valeur
+ajoutée
+dans
+les
+consommations
+électroniques
+N.B. : Se comporte comme la TC
+
+Over The Top
+N.B. : Se comporte comme la TC
+
+item_price_nvat
+vat
+
+Double
+Double
+
+Prix HTVA = (PU x Q) + TC
+Montant de la TVA = (Prix HTVA x taux
+de la TVA)
+
+item_price_wvat
+
+Double
+
+Prix de vente TVAC = (Prix HTVA +
+Montant TVA)
+
+Item_total_amount | Double
+
+Prix de Vente total (montant TTC) =
+(TVAC + PFL)
+
+taxpayer
+
+system_id
+
+item_code
+item_designation
+
+Chaine
+
+de
+
+Tableau contenant les informations du
+
+caractères
+
+contribuable qui seront retournées avec
+la méthode chechTIN
+
+Chaine
+
+de|100 | Identification
+
+du
+
+système
+
+du
+
+caractères
+contribuable
+Chaine de | 30
+Code de l’article
+caractères
+Chaine de |500 | Désignation de l’article
+
+caractères
+item_quantity
+Double
+item_measurement | Chaine de | 20
+_unit
+caractères
+item_cost_price
+Double
+
+item_cost_price_cur | Chaine de |5
+rency
+
+caractères
+
+Quantité de l’article
+Unité de mesure de l’article
+Prix unitaire de revient (coût de
+revient) lors de l’approvisionnement ou
+lors de la vente
+Type de monnaie du coût de revient
+lors de l’approvisionnement ou lors de
+Page 13 of 33
+
+item_movement_ty | Chaine
+pe
+
+de
+
+la vente. Les choix sont: « BIF »,
+« USD » et « EUR ».
+Le champ n’est pas obligatoire. Si rien
+n’est envoyé, le système considère par
+défaut que c’est le « BIF »
+Type d’entrée ou de sortie. Les valeurs
+
+|5
+
+caracteres
+
+acceptées sont :
+
+-
+
+item_movement_in | Chaine de | 30
+voice_ref
+caractères
+item_movement_de | Chaine
+
+-_
+-
+
+« EN » : Entrée Normales
+« ER » : Entrée Retour
+marchandises
+« EI » : Entrée Inventaire
+« EAJ » : Entrée Ajustement
+« ET » : Entrée Transfert
+« EAU » : Entrée Autres
+« SN » : Sortie Normales
+« SP » : Sortie Perte
+« SV » : Sortie Vol
+« SD » : Sortie Désuétude
+« SC > : Sortie Casse
+« SAJ » : Sortie Ajustement
+« ST » : Sortie Transfert
+
+-
+
+< SAU » : Sortie Autres
+
+Reference de la facture en cas de retour
+d'article
+
+de | 500 | Description sur le mouvement de stock
+
+scription
+caractères
+item_movement_da | Date heure
+te
+
+pour plus de détails
+La date de génération du mouvement
+de stock
+Format: “YYYY-MM-DD hh:mm:ss”
+
+N.B. : Veuillez ne pas envoyer la valeur null pour tous les champs dans le JSON.
+Mettez plutôt une chaîne de caractère vide («»).
+
+III. METHODE D'AUTHENTIFICATION (login)
+Lorsque le système du contribuable souhaite communiquer avec le système eBMS,
+
+il établit une connexion à I’API eBMS en appelant cette méthode et en transmettant
+
+les informations d'identification de l’utilisateur. La méthode d’authentification
+
+vérifiera les informations d'identification et émettra un « jeton d’accés » dans la
+
+réponse au format JSON. Ce jeton d’accés sera ensuite utilisé dans les appels de
+méthodes API suivants à partir du client. Le jeton d’accès aura l’heure d’émission
+
+et l’heure d’expiration stockées dans la base de données API (60 secondes). Une
+
+fois le jeton expiré, le client doit refournir des informations d'’identification
+
+utilisateur et obtenir un nouveau jeton. Un utilisateur peut se connecter à partir
+
+d'une adresse IP différente en même temps et recevra des jetons différents pour
+
+chaque connexion.
+
+J
+
+Paae 14 of 23
+
+Comment se connecter et obtenir le jeton généré :
+La requête envoyée aura les informations suivantes :
+Type
+
+Valeurs
+
+Protocol
+
+http
+
+de
+
+POST
+
+méthode
+URL
+
+https://ebms.obr.gov.bi:9443/ebms api/login/
+
+En-tête
+
+Content-Type:application/json
+
+Corps de la requête
+
+{
+uUsername":"<votre nom d'utilisateur système>",
+"password":"<votre mot de passe>"
+
+}
+Champs obligatoires
+
+username, password
+
+Les réponses qui seront fournies par le système eBMS sont les suivantes :
+
+Status| Réponse
+200
+
+{
+"success": true,
+
+"msg": "Opération réussie",
+"result": {
+
+"token":
+"ethchiOiJIUleNiIsInRSCCIGIkpXVCJQ.elecZVybrnFtZSIôanstwîZXhWI
+joxNjM5NTczNTgSfQ.wfx51HOOynLszuk3nWmtyZRhIZIZ3DthDSOHW_HohU“
+
+}
+
+}
+
+token (Chaine de caractères) tous les autres appels d’API doivent avoir
+jeton dans l’en-tête
+400
+
+“success”: false,
+"msg":" Veuillez fournir un nom d'utilisateur."
+
+400
+“success”: false,
+
+"msg":" Veuillez fournir un mot de passe."
+400
+
+}
+
+“success”: false,
+"msg":" Veuillez envoyer les données en utilisant la méthode POST."
+
+400
+“success”: false,
+Æ
+
+Paae 15 nf 22
+
+"msg":"Le format de la chaine de caractère JSON est invalide."
+401
+
+}
+500
+
+“success”: false,
+"msg":" Nom d'utilisateur ou mot de passe incorrect."
+
+{
+“success”: false,
+
+}
+
+IV.
+
+"msg":" Quelque chose a mal tourné. Veuillez réessayer plus tard."
+
+METHODE DE VERIFICATION DE FACTURE (getInvoice)
+
+Cette méthode sera utilisée pour obtenir les informations d’une facture. Le système
+du contribuable enverra l’identifiant d’une facture à la méthode. En retour, il
+
+obtiendra les détails de la facture, s'il existe.
+
+La requête envoyée aura les informations suivantes :
+Type
+
+Valeurs
+
+Protocol http de la méthodq POST
+
+URL
+
+https://ebms.obr.gov.bi:9443/ebms_api/getInvoice/
+
+En-tête
+
+Authorization:Bearer
+eyJhbGciOiJIUZI1NiIsINR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI
+
+6InJveSIsImV4cCI6MTU4MjYyMDY10X0.EMTwnkeM5PXV3LEEUveZLcvvi7pQmGUbWMAj2KeR94
+
+Corps
+de la requéte
+
+36
+"invoice_identiﬁer":"4701354861/ws47
+0135486100027/20
+220211120214/01929"
+
+}
+Champs obligatoires
+
+invoice_identifier
+
+N.B. : Pour accéder à la méthode, vous devez envoyer un en-tête avec un jeton
+
+valide. Le jeton est envoyé dans la variable nommée « Authorization ». La valeur
+
+de cette variable est composée par un mot clé « Bearer » et le jeton séparé par un
+
+espace.
+
+Les réponses qui seront fourni par le système eBMS sont les suivantes :
+Statut| Réponse
+200
+
+{
+*
+
+Paae 16 of 33
+
+"success": true,
+"msg": "Opération réussie",
+"result": {
+"invoices": [
+
+{
+"invoice_number": "01929",
+“invoice_date": "2022-02-11 12:02:14",
+
+"invoice_type": "FN",
+"tp_type": "1",
+"tp_name": "NDIKUMANA JEAN MARIE",
+
+"tp_TIN": "4701354861",
+
+"tp_trade_number": "3333",
+
+"tp_postal_number": "3256",
+"tp_phone_number": "70959595",
+"tp_address_province": "BUJUMBURA",
+"tp_address_commune": "BUJUMBURA",
+"tp_address_quartier": "GIKUNGU",
+
+"tp_address_avenue": "MUYINGA",
+"tp_address_rue": "NYAMBUYE",
+"tp_address_number": "",
+"vat_taxpayer": "1",
+
+"ct_taxpayer": "0",
+"tl_taxpayer": "0",
+"tp_fiscal_center": "DGC",
+
+"tp_activity_sector": "SERVICE MARCHAND",
+"tp legal_form": "suprl"
+"payment_type": "
+"invoice_currency": "BIF",
+
+"customer_name": "NGARUKIYINTWARI WAKA",
+"customer_TIN": "4401202020",
+"customer_address": "KIRUNDO",
+"vat_customer_payer": "1",
+"cancelled_invoice_ref": "",
+" invoice_ref": "",
+" cn_motif": "",
+"invoice_identifier": "4701354861/ws470135486100027/202202
+11120214/01929",
+"invoice_items": [
+
+{
+"item_designation": "Article 1",
+"item_quantity": "10",
+"item_price": "500",
+
+“item_ct": "0",
+"item_tI": "0",
+“item_ott_tax”:"0”,
+
+“item_tsce_tax”:"0",
+"item_price_nvat": "5000",
+
+"vat": "900",
+
+"item_price_wvat": "5900",
+"item_total_amount": "5900"
+
+"îtem_designation": "Article 2",
+
++
+
+Pace 17 of 33
+
+"item_quantity": "10",
+"item_price": "200",
+
+"item_ct": "30",
+"item_tI": "25",
+“item_ott_tax":"0",
+“item_tsce_tax”
+
+vat": "365.4",
+"item_price_wvat": "2395.4",
+"item_total_amount": "2420.4",
+
+]
+}
+403
+
+}
+
+]
+
+}
+
+}
+
+{
+“success”: false,
+
+"msg":" La clé API est manquante."
+
+}
+400
+“success”: false,
+"msg":"Le format de la chaine de caractére JSON est invalide."
+
+}
+400
+“success”: false,
+
+}
+400
+
+"msg":" Veuillez utiliser la méthode POST pour envoyer les données."
+
+{
+“success”: false,
+
+"msg":" Veuillez fournir un identifiant de la facture."
+
+;
+
+400
+
+{
+“success”: false,
+
+"msg":"Identifiant de la facture inconnu."
+
+}
+500
+
+{
+“success”: false,
+
+}
+
+"msg":" Quelque chose a mal tourné. Veuillez réessayer plus tard."
+
+£
+
+Page 18 of 33
+
+V.
+
+_ METHODE D'AJOUT DE FACTURE (addInvoice)
+
+Cette méthode sera appelée par les systèmes du contribuable pour ajouter des
+nouvelles factures dans la base de données eBMS.
+
+La requête envoyée aura les informations suivantes :
+Type
+
+Valeur
+
+Protocol | POST
+HTTP
+
+de
+
+méthode
+
+URL
+
+https://ebms.obr.gov.bi:9443/ebms api/addInvoice confirm/
+
+En-tête | Authorization:Bearer
+eyJhbGciOiJIUZI1NiIsINR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InJveSIsImVA4cCI6
+MTU4MjYyMDY10X0.EMTwnke-M5PXV3 LEEUveZLcvvi7pQmGUbWMAj2KeR94
+
+Corps
+de
+requête
+
+{
+"invoice_number": "0001/2021",
+"invoice_date": "2021-12-06 07:30:22",
+
+"invoice_type": "FN",
+
+"tp_type": "1",
+
+"tp_nam
+"NDIKUMANA JEAN MARIE",
+"tp_TIN": "4400773244",
+"tp_trade_number": "3333",
+
+"tp_postal_number": "3256",
+"tp_phone_number": "70959595",
+
+"tp_address_province": "BUJUMBURA",
+"tp_address_commune": "BUJUMBURA",
+"tp_address_quartier": "GIKUNGU",
+
+"tp_address_avenue": "MUYINGA",*
+"tp_address_number": "",
+"vat_taxpayer": "1",
+
+"ct_taxpayer": "0",
+"tl_taxpayer": "0",
+"tp_fiscal_center": "DGC",
+"tp_activity_sector": "SERVICE MARCHAND",
+
+"tp_legal_form": "suprl",
+"payment_type": "1",
+"invoice_currency": "BIF",
+"customer_name": "NGARUKIYINTWARI WAKA",
+"customer_TIN": "4100022020",
+
+"customer_address": "KIRUNDO",
+"vat_customer_payer": "1",
+"cancelled_invoice_ref": "",
+" invoice_ref": "",
+
+" cn_motif": "",
+"invoice_identifier": "4400773244/ws440077324400027/20211206
+073022/0001/2021",
+
+“invoice_items": [
+
+d
+
+Page 19 of 33
+
+"item_designation": "ARTICLE ONE",
+
+“item_quantity": "10",
+"item_price": "500",
+"item_ct": "789",
+
+"item_tl": "123",
+"item_price_nvat": "5789",
+
+"vat": "1042.02",
+"item_price_wvat": "6831.02",
+"item_total_amount": " 6954.02",
+
+"item_designation": "ARTICLE TWO",
+"item_quantity": "10",
+"item_price": "900",
+
+"item_ct":
+
+"0",
+
+"item_tl": "0",
+“item_ott_tax”:"0",
+
+“item_tsce_tax”:"0",
+"item_price_nvat": "9000",
+
+"vat": "1620",
+"item_price_wvat": "10620",
+"item_total_amount": "10620",
+
+}
+
+1
+
+}
+
+Champs | invoice_number,
+invoice_date,
+tp_type,
+tp_name,
+tp_TIN,
+obligato | tp_trade_number,
+tp_phone_number,
+tp_address_commune,
+ires
+tp_address_quartier,
+vat_taxpayer,
+ct_taxpayer,
+ti_taxpayer,
+tp_fiscal_center, tp_activity_sector, tp_legal_form, payment_type,
+customer_name,
+
+invoice_identifier,
+
+invoice_items,
+
+item_designation,
+
+item_quantity, item_price, item_ct (concerne seulement les assujettis à
+la taxe de consommation) , item_tl (concerne seulement les assujettis au
+prélèvement forfaitaire), item_ott_tax(concerne seulement les assujettis
+
+à la taxe OTT), item_tsce_tax (cocerne les assujetis à la taxe spécifique
+
+des services à valeur ajoutée dans les communications électroniques)
+
+item_price_nvat, vat, item_price_wvat, item_total_amount (concerne les
+
+assujettis à la taxe de consommation et au prélèvement forfaitaire)
+
+NB : Toutes ces mentions doivent figurer sur la facture de vente
+donnée au client.
+
+‘l
+
+Pane 2N nf 272
+
+Les réponses qui seront fourni par le système eBMS sont les suivantes :
+
+Statut| Réponse
+200
+
+{
+"success": true,
+
+"msg": "La facture a été ajoutée avec succès!"
+"result": {
+"invoice_number": "0001/2021",
+"invoice_registered_number": "4530253",
+"invoice_registered_date":"2023-05-12 10:04:23"
+
+3
+"electronic_signature":"9a2a3f27dd833f6f4a069235ce165723be1b7340"
+
+}
+403
+
+“success”: false,
+"msg":" La clé API est manquante."
+
+}
+400
+“success”: false,
+
+}
+
+"msg":" Veuillez fournir tous les champs obligatoires."
+
+400
+
+“success”: false,
+"msg":"Veuillez fournir
+manquant(s):............. "
+
+400
+
+tous
+
+les
+
+champs
+
+obligatoires.
+
+Champ(s)
+
+{
+“success”: false,
+
+"msg":"La taille du numéro de la facture excède celle du système (max 30
+caractères)"
+
+%
+400
+
+{
+“success”: false,
+
+}
+400
+
+"msg":"Le format de la date de facturation est incorrecte."
+
+{
+“success”: false,
+"msg":"La date de facturation fournie est supérieur à la date actuelle."
+
+400
+“success”: false,
+
+"msg":"La valeur du champ type de facture doit être comprise entre : « FN »
+; “ RC » ou « RHF »."
+
+¥
+
+Page 21 of 33
+
+400
+“success”: false,
+"msg":"La taille du type de contribuable excède celle du système (max 3
+caractères)"
+
+}
+400
+
+{
+“success”: false,
+
+"msg":"La valeur du champ type contribuable (tp_type) est incorrecte. La
+valeur doit être comprise entre '1' ou '2'."
+
+}
+
+400
+
+{
+“success”: false,
+"msg":"La taille du champ nom du contribuable excède celle du système
+
+(max 100 caractères)"
+
+}
+400
+
+{
+“success”: false,
+"msg":"La taille du champ NIF du contribuable excède celle du système
+(max 15 caractères)"
+
+}
+400
+
+{
+“success”: false,
+
+&
+
+"msg":"Le NIF fourni dans le champ NIF du contribuable est incorrecte"
+
+400
+
+“success”: false,
+"msg":"La taille du champ Registre de commerce du contribuable excède
+celle du système (max 30 caractères)"
+
+}
+400
+
+{
+“success”: false,
+
+"msg":"La taille du champ Boite Postale du contribuable excède celle du
+
+système (max 20 caractères)"
+
+400
+
+{
+“success”: false,
+
+"msg":"La taille du champ numéro de téléphone du contribuable excède celle
+du système (max 20 caractères)"
+
+400
+
+{
+“success”: false,
+"msg":"La taille du champ adresse du contribuable : province excède celle
+du système (max 50 caractères)"
+
+4
+
+Page 22 of 33
+
+400
+
+{
+“success”: false,
+"msg": "La taille du champ adresse du contribuable: commune excède celle
+
+du système (max 50 caractères)"
+
+{
+
+400
+
+“success”: false,
+
+"msg":"La taille du champ adresse du contribuable : quartier excède celle
+du système (max 50 caractères)"
+
+400
+“success”: false,
+"msg": "La taille du champ adresse du contribuable: avenue excède celle du
+
+système (max 50 caractères)"
+
+400
+
+{
+“success”: false,
+"msg":"La taille du champ adresse du contribuable : rue excède celle du
+
+système (max 50 caractères)"
+400
+
+{
+“success”: false,
+
+"msg":"La taille du champ adresse du contribuable : numéro excède celle
+
+du système (max 10 caractères)"
+
+%
+
+400
+
+“success”: false,
+"msg":"La taille du champ assujetti à la TVA du contribuable excède celle du
+
+système (max 1 caractère)"
+
+400
+“success”: false,
+"msg":"La valeur du champ assujetti à la TVA est incorrecte. La valeur
+doit
+être comprise entre '0' ou '1'."
+
+}
+400
+
+{
+“success”: false,
+
+"msg":"La taille du champ assujetti à la taxe de consommation du
+contribuable excède celle du système (max 1 caractère)"
+
+>
+400
+
+{
+“success”: false,
+
+"msg":"La valeur du champ assujetti & la taxe de consommation
+incorrecte. La valeur doit être comprise entre '0' ou '1'."
+
+est
+
+}
+400
+
+{
+4
+
+R 40 ce m4
+
+“success”: false,
+"msg":"La taille du champ assujetti à la prélèvement forfaitaire libératoire
+du contribuable excède celle du système (max 1 caractère)"
+
+}
+400
+
+“success”: false,
+"msg":"La valeur du champ assujetti à la prélèvement forfaitaire libératoire
+est incorrecte. La valeur doit être comprise entre 'O' ou '1"."
+
+}
+400
+
+“success”: false,
+"msg":"La taille du champ centre fiscal du contribuable excède celle du
+
+système (max 20 caractère)"
+400
+“success”: false,
+
+"msg":"La taille du champ secteur d'activités du contribuable excède celle
+du système (max 20 caractère)"
+
+400
+
+{
+“success”: false,
+"msg":"La taille du champ forme juridique du contribuable excède celle du
+système (max 50 caractère)"
+
+400
+“success”: false,
+"msg":"Le format ou la valeur du champ type de payement (payment_type)
+est incorrecte. La valeur doit être comprise entre '1','2',3 ou '4'."
+
+}
+
+400
+
+{
+“success”: false,
+
+"msg":"La taille du champ Nom du client excède celle du système (max 100
+caractère)"
+
+}
+400
+“success”: false,
+
+"msg":"Le NIF du client n'est pas connu par l'OBR. Veuillez fournir un NIF
+valide"
+
+}
+400
+“success”: false,
+"msg":"Le NIF du client n'est pas connu par l'OBR. Veuillez fournir un NIF
+valide"
+
+}
+400
+
+{
+“success”: false,
+‘
+
+Page 24 nf 23
+
+"msg":"La taille du champ client assujetti à la TVA excède celle du système
+(max 1 caractère)"
+
+}
+400
+“success”: false,
+
+"msg":"La valeur du champ client assujetti à la TVA est incorrecte. La valeur
+doit être comprise entre '0' ou '1'."
+
+}
+400
+
+{
+“success”: false,
+"msg":"La valeur du champ Numéro de référence de la facture annulée ne
+correspond à aucune de vos facture enregistré dans le système."
+
+}
+
+400
+
+“success”: false,
+"msg":"La valeur du champ Numéro de référence de la facture
+correspond à aucune de vos facture enregistré dans le système."
+
+ne
+
+}
+
+400
+
+{
+“success”: false,
+"msg":"La taille du champ motif excède celle du système (max 100
+caractères)."
+
+}
+400
+
+{
+“success”: false,
+"msg":"La taille du champ De5|gnat10n de l’article excede celle du systéme
+(max 500 caractère). Pour la ligne numéro:
+
+»
+400
+
+“success”: false,
+"msg":"La valeur du champ Quantité de l’article ne correspond pas à un
+nombre. Pour la ligne numéro
+
+}
+400
+
+ce
+“success”: false,
+"msg":"La valeur du champ prlx de l’article ne correspond pas à un nombre.
+
+Pour la ligne numéro:
+
+}
+400
+
+{
+“success false,
+"msg":"La valeur du champ
+prlx ex usine ne correspond pas à un nombre.
+Pour la ligne numéro:.
+-
+
+}
+
+400
+
+<
+“success”: false,
+
+4
+
+Pane 28 nf 22
+
+"msg":"La valeur du champ Taxe de consommatlon ne correspond pas a un
+nombre. Pour la ligne numéro:
+
+>
+
+400
+
+{
+“success”: false,
+"msg":"La valeur du champ Taxe de consommatlon ne correspond pas à un
+nombre. Pour la ligne numéro:.
+
+>
+400
+
+“success”: false,
+"msg":"La valeur du champ prlx de l’article ne correspond pas à un nombre.
+Pour la ligne numéro:.
+
+}
+400
+
+{
+
+}
+400
+
+“success”: false,
+"msg":"Une facture avec le méme numéro de facture existe déjà."
+
+{
+“success”: false,
+"msg":"Le format de l'identifiant incorrecte. Numéro de la facture fournie
+incorrecte"
+
+}
+400
+
+{
+“success”: false,
+
+"msg":"Le format de l’identifiant de la facture incorrecte. Date fournie
+incorrecte"
+
+}
+400
+
+{
+
+“success”: false,
+
+"msg":"Le format de I'identifiant de la facture incorrecte. Identifiant système
+ou numéro de serie incorrecte"
+
+}
+
+400
+“success”: false,
+"msg":"Le format de I'identifiant de la facture incorrecte. Le NIF fourni est
+incorrecte"
+
+>
+400
+
+{
+“success”: false,
+
+"msg":"Le format de I'identifiant de la facture incorrecte. Il manque certains
+
+400
+
+-~
+
+—
+
+éléments"
+
+}
+
+“success”: false,
+"msg":"Le format de la chaine de caractère JSON est invalide."
+4
+
+Pana DE nf 22
+
+400
+
+{
+“success”: false,
+
+"msg":"Veuillez utiliser la méthode POST pour envoyer les données."
+
+}
+400
+“success”: false,
+
+"msg":"La date de la facture annulée doit être inférieure ou égale à la date
+
+de la facture qui l’annule."
+
+}
+500
+
+S
+
+success”: false,
+
+"msg":" Quelque chose a mal tourné. Veuillez réessayer plus tard."
+
+VI.
+
+METHODE DE VERIFICATION DU NIF (checkTIN)
+
+Cette méthode vérifie si le NIF (Numéro d'Identification Fiscal) donné dans les
+parametres est valide et connu par l’OBR ou non et renvoie le nom du propriétaire
+du NIF.
+
+La requête envoyée aura les informations suivantes :
+Type
+
+Valeur
+
+Protocol
+
+POST
+
+HTTP
+
+de
+
+méthode
+URL
+
+https://ebms.obr.gov.bi:9443/ebms api/checkTIN/
+
+En-tête
+
+Authorization:Bearer
+eyJhbGciOiJIUZI1NiIsINR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InJveSIsImV
+4cCI6MTU4MjYyMDY10X0.EMTwnkeM5PXV3LEEUveZLcvvi7pQmGUbWMAj2KeR94
+
+Corps
+de la requét{
+
+"tp_TIN": "4000202020d"
+
+}
+Champs
+
+tp_ TIN
+
+obligatoires
+
+P ass n cmm
+
+Les réponses qui seront fournies par le système eBMS sont les suivantes :
+
+Statut| Réponse
+200
+
+{
+"success": true,
+"msg": "Opération réussie",
+"result": {
+
+"taxpayer": [
+"tp_name": "NDIKUMANA Jean Marie"
+
+}
+
+}
+
+]
+
+}
+
+403
+
+“success”: false,
+"msg":" La clé API est manquante."
+400
+“success”: false,
+
+"msg":" Veuillez fournir le NIF du contribuable."
+400
+“success”: false,
+
+"msg":"Le format de la chaine de caractère JSON est invalide."
+400
+
+“success”: false,
+"msg":"Veuillez utiliser la méthode POST pour envoyer les données."
+
+400
+
+<
+“success”: false,
+
+"msg":"NIF du contribuable inconnu."
+
+}
+500
+
+{
+“success”: false,
+
+}
+
+"msg":" Quelque chose a mal tourné. Veuillez réessayer plus tard."
+
+VII. METHODE D'ANNULATION DE FACTURE (cancelInvoice)
+
+Cette méthode sera utilisée pour annuler une facture. Le système du contribuable
+
+enverra l’identifiant d’une facture à la méthode. En retour, il obtiendra une réponse
+disant que l’annulation s’est effectuée avec succès ou pas, avec une explication en
+
+message.
+
+#
+
+Page 28 of 33
+
+La requête envoyée aura les informations suivantes :
+Type
+
+Valeurs
+
+Protocol http de la méthod{ POST
+
+URL
+
+https://ebms.obr.gov.bi:9443/ebms api/cancelInvoice/
+
+En-tête
+
+Authorization:Bearer
+eyJhbGciOiJIUZI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI
+6InJveSIsImV4cCI6MTU4MjYyMDY10X0.EMTwnkeM5PXV3LEEUveZLcvvi7pQMGUbWMAj2KeR94
+
+Corps
+
+{
+
+de la requête
+
+"invoice_identifier":"4701354861/ws470135486100027/20
+220211120214/01929",
+“cn_motif" : "Marchandise non conforme à la commande"
+
+}
+Champs obligatoires
+
+invoice_identifier, cn_motif
+
+Les réponses qui seront fournies par le système eBMS sont les suivantes :
+
+Statut| Réponse
+200
+
+{
+"success": true,
+"msg": " La facture avec de l'identifiant
+
+4701354861/ws470135486100027/20220211120214/01929 a été annulée
+avec succès!"
+
+}
+
+403
+
+{
+“success”: false,
+
+"msg":" La clé API est manquante."
+
+n
+400
+
+<
+“success”: false,
+
+}
+400
+
+"msg":"Le format de la chaine de caractère JSON est invalide."
+
+{
+“success”: false,
+
+}
+400
+
+"msg":" Veuillez utiliser la méthode POST pour envoyer les données."
+
+{
+“success”: false,
+"msg":" Veuillez fournir un identifiant de la facture."
+
+}
+
+4
+
+Pade 29 of 33
+
+400
+
+{
+“success”: false,
+"msg":" Identifiant de la facture inconnu."
+
+}
+400
+
+<
+}
+
+500
+
+“success”: false,
+"msg":"La facture que vous voulez annuler a été déjà annulée..."
+
+{
+“success”: false,
+
+}
+
+"msg":" Quelque chose a mal tourné. Veuillez réessayer plus tard."
+
+VIII. METHODE
+
+D'AJOUT
+
+DE
+
+MOUVEMENTS
+
+(AddStockMovement)
+
+DE
+
+STOCK
+
+Cette méthode permet d'ajouter les mouvements de stock, que ce soit des entrées
+
+ou des sorties de stock en spécifiant leurs types et une description si nécessaire.
+La requête envoyée aura les informations suivantes :
+
+Type
+
+Valeurs
+
+Protocol http de la méthod POST
+
+URL
+
+https://ebms.obr.gov.bi:9443/ebms api/AddStockMoveme
+nt/
+
+En-téte
+
+Authorization:Bearer
+eyJhbGciOiJIUZI1NiIsINR5cCI6IkpXVCJ9.eyJ 1c2VybmFtZSI
+6InJveSIsImV4cCI6MTU4MjYyMDY10X0.EMTwnkeM5PXV3LEEUveZLcvvi7pQmGUbWMAj2KeR94
+
+Corps
+
+{
+
+de la requête
+
+"system_or_device_id": "ws400000349300131",
+"item_code": "100",
+"item_designation": "Amstel 65cl",
+
+"item_quantity": "5",
+
+}
+Champs obligatoires
+
+"item_measurement_unit": "bouteille",
+"item_cost_price": "2000",
+"item_cost_price_currency": "BIF",
+"îtem_movement_type": "EN",
+"item_movement_invoice_ref": "",
+"item_movement_description": "",
+"item_movement_date": "2022-11-25 08:43:52"
+
+device_id,
+
+item_code,
+
+item_measurement_unit,
+4
+
+item_designation,
+
+item_quantity,
+item_cost_price,
+Dana 2N n£ 22
+
+item_cost_price_currency,
+item_movement_date
+
+item_movement_type,
+
+Les réponses qui seront fournies par le système eBMS sont les suivantes :
+
+Statut| Réponse
+200
+
+{
+"success": true,
+
+}
+403
+
+"msg": " La transaction a été ajoutée avec succès!"
+
+{
+"success": false,
+"msg": "La clé API est manquante.",
+"result": []
+
+}
+400
+
+{
+"success": false,
+"msg": "Veuillez fournir tous les champs obligatoires.
+manquant(s): ...",
+"result": []
+
+400
+
+Champ(s)
+
+{
+"success": false,
+"msg": "Le format de la chaine de caractère JSON est invalide.",
+"result": []
+
+}
+400
+
+{
+"success": false,
+"msg": "Veuillez utiliser la methode POST pour envoyer les données.",
+"result": []
+
+}
+400
+
+{
+"success": false,
+
+"msg": "Identifiant système incorrect.",
+"result": []
+
+}
+400
+"success": false,
+"msg": "Veuillez fournir un type de mouvement valide. Le type de
+mouvement de stock doit étre inclu dans les types suivants : EN, ER, EI,
+
+EAJ, ET, EAU, SN, SP, SV, SD, SC, SAJ, ST, SAU.",
+"result": []
+
+500
+
+{
+“success”: false,
++
+
+Dana 21 n£ 22
+
+msg": Quelque chose a mal tourné. Veuillez réessayer plus tard."
+
+IX.
+
+CODES DE STATUTS
+
+Tous les codes d’état sont des codes d’état HTTP standard. Ceux ci-dessous sont
+utilisés dans cette API.
+2XX - Succès d'une sorte ou d’une autre
+4XX - Une erreur s’est produite dans la partie du client
+5XX - Une erreur s’est produite dans la partie du serveur
+
+Code
+
+Description
+
+Signification
+
+200
+
+OK
+
+Requête traitée avec succès. La réponse dépendra
+de la méthode de requête utilisée.
+
+201
+
+Created
+
+Statut
+
+Requéte traitée avec succès et création d’un
+document.
+
+202
+
+Accepted (Request
+
+|Requête traitée, mais sans garantie de résultat.
+
+accepted, and queug|
+
+for execution)
+400
+
+Bad request
+
+401
+
+Authentication
+
+failure
+403
+
+Forbidden
+
+La requéte avait une mauvaise syntaxe ou était
+impossible a satisfaire.
+Une authentification est nécessaire pour accéder à
+
+la ressource.
+
+Le serveur a compris la requête, mais refuse de
+
+I'exécuter. Contrairement à l'erreur 401,
+s'authentifier ne fera aucune différence. Sur les
+serveurs où l'authentification est requise, cela
+
+signifie généralement que l'authentification a été
+acceptée mais que les droits d'accès ne
+permettent pas au client d'accéder à la ressource.
+404
+
+Resource not found | Ressource non trouvée.
+
+405
+
+Method Not Allowed | Méthode de requête non autorisée.
+
+409
+
+Conflict
+
+La requête ne peut être traitée en l’état actuel.
+
+412
+
+Precondition Failed
+
+|Préconditions envoyées par la requéte non
+vérifiées.
+
++
+
+PDiss DR E VR
+
+413
+
+Request Entity Too
+
+|Traitement abandonné dû à une requête trop
+
+Large
+
+importante.
+
+500
+
+Internal Server
+Error
+
+Erreur interne du serveur.
+
+501
+
+Not Implemented
+
+Fonctionnalité réclamée non supportée par le
+
+serveur.
+503
+
+Service Unavailable | Service temporairement indisponible ou en
+maintenance.
+
+Fait à Bujumbura, le Z0 /41 /2023
+
+LE COMMISSAIRE GENERAL
+/
+
+Jean Claude MANTRAKIZA
+
+Diss 98 £ An
+
+
