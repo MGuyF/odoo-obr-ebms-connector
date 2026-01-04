@@ -14,21 +14,21 @@
                             type="object" 
                             string="Envoyer à EBMS" 
                             class="btn-primary"
-                            x-invisible="{'invisible': ['|', ('move_type', 'not in', ['out_invoice', 'out_refund']), ('state', '!=', 'posted')]}"
+                            invisible="move_type not in ['out_invoice', 'out_refund'] or state != 'posted'"
                             confirm="Êtes-vous sûr de vouloir envoyer cette facture vers EBMS ?"/>
                     
                     <button name="action_reset_ebms_status" 
                             type="object" 
                             string="Réinitialiser EBMS" 
                             class="btn-secondary"
-                            x-invisible="{'invisible': ['|', ('move_type', 'not in', ['out_invoice', 'out_refund']), ('ebms_status', '=', 'draft')]}"
+                            invisible="move_type not in ['out_invoice', 'out_refund'] or ebms_status == 'draft'"
                             confirm="Êtes-vous sûr de vouloir réinitialiser le statut EBMS ?"/>
                     
                     <button name="ebms_manual_signature_check" 
                             type="object" 
                             string="Vérifier Signature EBMS" 
                             class="btn-secondary"
-                            x-invisible="{'invisible': [('ebms_signature', '=', False)]}"
+                            invisible="not ebms_signature"
                             confirm="Ceci va vérifier la validité de la signature électronique avec la clé publique de l'OBR. Continuer ?"/>
                 </xpath>
 
@@ -39,26 +39,29 @@
                                decoration-success="ebms_status == 'sent'"
                                decoration-danger="ebms_status == 'error'"
                                decoration-info="ebms_status == 'draft'"/>
-                        <field name="ebms_reference" x-invisible="{'invisible': [('ebms_reference', '=', False)]}"/>
-                        <field name="ebms_sent_date" x-invisible="{'invisible': [('ebms_sent_date', '=', False)]}"/>
+                        <field name="ebms_signature" invisible="1"/>
+                        <field name="ebms_reference" invisible="not ebms_reference"/>
+                        <field name="ebms_sent_date" invisible="not ebms_sent_date"/>
                         <field name="ebms_error_message" 
-                               x-invisible="{'invisible': [('ebms_error_message', '=', False)]}"
+                               invisible="not ebms_error_message"
                                widget="text"/>
                     </group>
                 </xpath>
 
                 <!-- Ajout d'un indicateur visuel dans le header pour le statut EBMS -->
                 <xpath expr="//div[hasclass('oe_button_box')]" position="after">
-                    <div class="alert alert-success" role="alert" 
-                         x-invisible="{'invisible': [('ebms_status', '!=', 'sent')]}"
+                    <!-- Alerte de succès : facture envoyée -->
+                    <div class="alert alert-success" role="alert"
+                         invisible="ebms_status != 'sent' or not id"
                          style="margin: 10px;">
                         <strong>✓ Facture envoyée à EBMS</strong>
                         <br/>
                         <span>Référence: <field name="ebms_reference" readonly="1"/></span>
                     </div>
                     
-                    <div class="alert alert-danger" role="alert" 
-                         x-invisible="{'invisible': [('ebms_status', '!=', 'error')]}"
+                    <!-- Alerte d'erreur : erreur d'envoi EBMS -->
+                    <div class="alert alert-danger" role="alert"
+                         invisible="ebms_status != 'error' or not id"
                          style="margin: 10px;">
                         <strong>⚠ Erreur d'envoi EBMS</strong>
                         <br/>

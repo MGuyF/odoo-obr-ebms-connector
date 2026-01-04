@@ -87,17 +87,19 @@ class TestEBMSBusiness(TransactionCase):
         }
         mock_post.return_value.status_code = 200
         invoice = self._create_invoice()
-        invoice.action_send_ebms()
-        self.assertEqual(invoice.ebms_status, 'error')
-        self.assertIn('Erreur OBR', invoice.ebms_error_message or '')
+        # Dans un TransactionCase, une UserError provoque un rollback complet, on ne peut donc
+        # pas vérifier l'état de la facture après l'appel. On se contente de vérifier
+        # que la bonne exception est levée avec le bon message.
+        with self.assertRaisesRegex(UserError, 'Erreur OBR'):
+            invoice.action_send_ebms()
 
     @patch('odoo.addons.ebms_connector.models.account_invoice_inherit.requests.post')
     def test_action_send_ebms_exception(self, mock_post):
         mock_post.side_effect = Exception("Connexion impossible")
         invoice = self._create_invoice()
-        invoice.action_send_ebms()
-        self.assertEqual(invoice.ebms_status, 'error')
-        self.assertIn('Connexion impossible', invoice.ebms_error_message or '')
+        # Comme pour le test précédent, on vérifie uniquement que l'exception attendue est levée.
+        with self.assertRaisesRegex(UserError, 'Connexion impossible'):
+            invoice.action_send_ebms()
 
     @patch('odoo.addons.ebms_connector.models.account_invoice_inherit.requests.post')
     def test_action_cancel_ebms_success(self, mock_post):

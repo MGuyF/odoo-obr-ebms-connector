@@ -39,11 +39,13 @@ Documentation complète et exemples d’utilisation dans le README du module.
     'website': 'https://www.ebms-connector.com',
     'depends': ['account'],
     'data': [
+        'security/ir.model.access.csv',
+        'views/res_config_settings_views.xml',
         'views/invoice_view.xml',
     ],
-    'demo': [
-        'data/demo_data.xml',
-    ],
+    # 'demo': [
+    #     'data/demo_data.xml',
+    # ],
     'assets': {},
     'installable': True,
     'auto_install': False,

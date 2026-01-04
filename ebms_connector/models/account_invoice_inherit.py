@@ -16,11 +16,17 @@ _logger = logging.getLogger(__name__)
 class AccountMoveInherit(models.Model):
     _inherit = 'account.move'
 
+    def write(self, vals):
+        res = super().write(vals)
+        if 'ebms_status' in vals:
+            _logger.info(f"[DIAG EBMS] Changement de statut EBMS pour factures {self.ids} -> {vals['ebms_status']}")
+        return res
+
     ebms_status = fields.Selection([
         ('draft', 'Brouillon'),
         ('sent', 'Envoyé à EBMS'),
         ('error', 'Erreur d\'envoi')
-    ], string='Statut EBMS', default='draft', help="Statut de l'envoi vers EBMS")
+    ], string='Statut EBMS', default='draft', required=True, help="Statut de l'envoi vers EBMS")
     ebms_reference = fields.Char(string='Référence EBMS', help='Référence EBMS fournie par l’OBR')
     ebms_signature = fields.Text(string='Signature électronique EBMS', help='Signature électronique reçue pour vérification')
     ebms_error_message = fields.Text(string='Message d\'erreur EBMS', help='Détails de l\'erreur EBMS')
@@ -43,10 +49,17 @@ class AccountMoveInherit(models.Model):
                 raise UserError(_('Cette facture a déjà été envoyée vers EBMS.'))
 
             try:
-                ebms_data = record._prepare_ebms_data_burundi()
+                # Logique "intelligente" pour choisir la source des données
+                url = self.env['ir.config_parameter'].sudo().get_param('ebms.api_url')
+                if url and '/ebms/demo/' in url:
+                    ebms_data = record._prepare_ebms_data_demo()
+                else:
+                    ebms_data = record._prepare_ebms_data_burundi()
+                
                 result = record._send_to_ebms_api_burundi(ebms_data)
                 # Log brut de la réponse pour audit
                 record.message_post(body=f"[EBMS API Response] {json.dumps(result, ensure_ascii=False)}")
+                
                 if result.get('success'):
                     record.write({
                         'ebms_status': 'sent',
@@ -65,6 +78,10 @@ class AccountMoveInherit(models.Model):
                     error_message = _('Erreur lors de l’envoi EBMS : %s') % result.get('msg', 'Erreur inconnue')
                     record.message_post(body=error_message)
                     raise UserError(error_message)
+            
+            except UserError:
+                raise # On laisse passer les UserError métier
+            
             except Exception as e:
                 record.write({
                     'ebms_status': 'error',
@@ -149,6 +166,27 @@ class AccountMoveInherit(models.Model):
             # Signature (à remplir après retour EBMS)
             'electronic_signature': '',
             # TODO: Ajouter d'autres blocs EBMS si besoin
+    }
+
+    def _prepare_ebms_data_demo(self):
+        """
+        Prépare un dictionnaire MINIMALISTE pour la DÉMO.
+        Ne contient que les champs nécessaires pour que le contrôleur de démo fonctionne.
+        """
+        self.ensure_one()
+        _logger.info('Préparation des données de DÉMO pour la facture %s avec un montant de %s', self.name, self.amount_total)
+        return {
+            'invoice_number': self.name,
+            'invoice_date': self.invoice_date.strftime('%Y-%m-%d'),
+            'client_name': self.partner_id.name or '',
+            'amount_total': self.amount_total,
+            'lines': [
+                {
+                    'item_designation': line.name,
+                    'item_quantity': line.quantity,
+                    'item_total': line.price_subtotal,
+                } for line in self.invoice_line_ids
+            ]
         }
 
     def ebms_manual_signature_check(self):
@@ -243,9 +281,13 @@ class AccountMoveInherit(models.Model):
         }
         try:
             response = requests.post(url, headers=headers, json=ebms_data, timeout=30)
+            _logger.info('EBMS DEMO: Réponse brute HTTP = %s', response.text)
             response.raise_for_status()
             resp_json = response.json()
-            # Selon la doc OBR, adapter le parsing
+            _logger.info('EBMS DEMO: Réponse JSON décodée = %s', resp_json)
+            # Prise en charge des deux formats (JSON-RPC Odoo et plat OBR)
+            if isinstance(resp_json, dict) and 'result' in resp_json:
+                resp_json = resp_json['result']
             if resp_json.get('success'):
                 return {
                     'success': True,
