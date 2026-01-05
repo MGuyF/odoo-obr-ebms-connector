@@ -19,6 +19,16 @@ class ResConfigSettings(models.TransientModel):
         config_parameter='ebms.nif_check_url',
         help='URL de l\'endpoint pour la vérification du NIF.'
     )
+    ebms_api_username = fields.Char(
+        string="Nom d'utilisateur EBMS",
+        config_parameter='ebms.api_username',
+        help="Nom d'utilisateur pour l'authentification EBMS."
+    )
+    ebms_api_password = fields.Char(
+        string="Mot de passe EBMS",
+        config_parameter='ebms.api_password',
+        help="Mot de passe pour l'authentification EBMS.",
+    )
     ebms_api_token = fields.Char(
         string='Token d\'authentification EBMS',
         config_parameter='ebms.api_token',

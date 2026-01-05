@@ -30,6 +30,30 @@
                             class="btn-secondary"
                             invisible="not ebms_signature"
                             confirm="Ceci va vérifier la validité de la signature électronique avec la clé publique de l'OBR. Continuer ?"/>
+
+                    <!-- Bouton Consulter EBMS (unique, méthode réelle) -->
+<button name="action_get_ebms_invoice"
+        type="object"
+        string="Consulter EBMS"
+        class="btn-secondary"
+        invisible="not ebms_reference"
+        confirm="Voulez-vous consulter les informations EBMS de cette facture ?"/>
+
+<!-- Bouton Annuler EBMS (méthode réelle) -->
+<button name="action_cancel_ebms"
+        type="object"
+        string="Annuler EBMS"
+        class="btn-danger"
+        invisible="ebms_status != 'sent' or not ebms_reference"
+        confirm="Êtes-vous sûr de vouloir annuler cette facture côté EBMS ?"/>
+
+<!-- Bouton Vérifier Signature (méthode réelle) -->
+<button name="ebms_manual_signature_check"
+        type="object"
+        string="Vérifier Signature EBMS"
+        class="btn-secondary"
+        invisible="not ebms_signature"
+        confirm="Voulez-vous vérifier la signature EBMS de cette facture ?"/>
                 </xpath>
 
                 <!-- Ajout des champs EBMS dans l'onglet "Autres informations" -->

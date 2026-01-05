@@ -10,6 +10,111 @@ import base64
 
 class TestEBMSBusiness(TransactionCase):
 
+    @patch('odoo.addons.ebms_connector.models.ebms_utils.requests.post')
+    def test_ebms_login_success(self, mock_post):
+        """Test du login EBMS qui stocke le token en cas de succès."""
+        from odoo.addons.ebms_connector.models.ebms_utils import ebms_login
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.json.return_value = {
+            'success': True,
+            'result': {'token': 'TOKEN_OK'}
+        }
+        self.env['ir.config_parameter'].sudo().set_param('ebms.login_url', 'https://fake.ebms.api/login')
+        self.env['ir.config_parameter'].sudo().set_param('ebms.api_username', 'user')
+        self.env['ir.config_parameter'].sudo().set_param('ebms.api_password', 'pass')
+        token = ebms_login(self.env)
+        self.assertEqual(token, 'TOKEN_OK')
+        self.assertEqual(self.env['ir.config_parameter'].sudo().get_param('ebms.api_token'), 'TOKEN_OK')
+
+    @patch('odoo.addons.ebms_connector.models.account_invoice_inherit.requests.post')
+    def test_action_get_ebms_invoice_success(self, mock_post):
+        """Test récupération de facture EBMS (getInvoice) succès."""
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.json.return_value = {'success': True, 'details': {'foo': 'bar'}}
+        invoice = self._create_invoice()
+        invoice.ebms_reference = 'EBMS-REF-123'
+        self.env['ir.config_parameter'].sudo().set_param('ebms.getinvoice_url', 'https://fake.ebms.api/getInvoice')
+        self.env['ir.config_parameter'].sudo().set_param('ebms.api_token', 'FAKE_TOKEN')
+        result = invoice.action_get_ebms_invoice()
+        self.assertTrue(result['success'])
+        self.assertIn('details', result)
+
+    @patch('odoo.addons.ebms_connector.models.account_invoice_inherit.requests.post')
+    def test_action_get_ebms_invoice_token_expired(self, mock_post):
+        """Test récupération de facture EBMS avec token expiré puis succès après retry login."""
+        from odoo.addons.ebms_connector.models.ebms_utils import ebms_login
+        # Simule d'abord un 401 (token expiré), puis un succès
+        def side_effect(*args, **kwargs):
+            if not hasattr(side_effect, 'called'):
+                side_effect.called = True
+                class Resp:
+                    status_code = 401
+                    text = 'Token expiré'
+                    def json(self): return {'msg': 'Token expiré'}
+                return Resp()
+            else:
+                class Resp:
+                    status_code = 200
+                    def json(self): return {'success': True, 'details': {'foo': 'bar'}}
+                return Resp()
+        mock_post.side_effect = side_effect
+        invoice = self._create_invoice()
+        invoice.ebms_reference = 'EBMS-REF-123'
+        self.env['ir.config_parameter'].sudo().set_param('ebms.getinvoice_url', 'https://fake.ebms.api/getInvoice')
+        self.env['ir.config_parameter'].sudo().set_param('ebms.api_token', '')
+        # Patch ebms_login pour simuler le refresh
+        with patch('odoo.addons.ebms_connector.models.account_invoice_inherit.ebms_login', return_value='TOKEN_OK'):
+            result = invoice.action_get_ebms_invoice()
+            self.assertTrue(result['success'])
+
+    @patch('odoo.addons.ebms_connector.models.stock_move_ebms.requests.post')
+    def test_action_send_ebms_stock_movement_success(self, mock_post):
+        """Test envoi mouvement de stock EBMS succès."""
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.json.return_value = {'success': True, 'reference': 'STOCK-REF'}
+        move = self.env['stock.move'].create({
+            'name': 'Test stock',
+            'product_id': self.env.ref('product.product_product_4').id,
+            'product_uom_qty': 2,
+            'product_uom': self.env.ref('uom.product_uom_unit').id,
+            'location_id': self.env.ref('stock.stock_location_stock').id,
+            'location_dest_id': self.env.ref('stock.stock_location_customers').id,
+            'ebms_movement_type': 'EN',
+            'date': fields.Datetime.now(),
+        })
+        self.env['ir.config_parameter'].sudo().set_param('ebms.stock_url', 'https://fake.ebms.api/stock')
+        self.env['ir.config_parameter'].sudo().set_param('ebms.api_token', 'FAKE_TOKEN')
+        move.action_send_ebms_stock_movement()
+        self.assertEqual(move.ebms_stock_status, 'sent')
+        self.assertEqual(move.ebms_stock_reference, 'STOCK-REF')
+
+    @patch('odoo.addons.ebms_connector.models.account_invoice_inherit.requests.post')
+    def test_action_send_ebms_token_expired_retry(self, mock_post):
+        """Test envoi de facture EBMS avec token expiré puis succès après retry login."""
+        # Simule d'abord un 401, puis un succès
+        def side_effect(*args, **kwargs):
+            if not hasattr(side_effect, 'called'):
+                side_effect.called = True
+                class Resp:
+                    status_code = 401
+                    text = 'Token expiré'
+                    def json(self): return {'msg': 'Token expiré'}
+                return Resp()
+            else:
+                class Resp:
+                    status_code = 200
+                    def json(self): return {'success': True, 'reference': 'OBR123', 'electronic_signature': 'SIGNATURE123', 'msg': 'OK'}
+                return Resp()
+        mock_post.side_effect = side_effect
+        invoice = self._create_invoice()
+        self.env['ir.config_parameter'].sudo().set_param('ebms.api_url', 'https://fake.ebms.api/send')
+        self.env['ir.config_parameter'].sudo().set_param('ebms.api_token', '')
+        with patch('odoo.addons.ebms_connector.models.account_invoice_inherit.ebms_login', return_value='TOKEN_OK'):
+            invoice.action_send_ebms()
+            self.assertEqual(invoice.ebms_status, 'sent')
+            self.assertEqual(invoice.ebms_reference, 'OBR123')
+
+
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
