@@ -7,31 +7,53 @@
         <field name="arch" type="xml">
             <xpath expr="//block[@id='invoicing_settings']" position="after">
                 <block title="EBMS Connector" id="ebms_connector_settings">
-                    <setting string="EBMS API Settings" help="Configure the connection to the EBMS API.">
-                        <div class="content-group">
-                            <div class="row mt16">
-                                <label for="ebms_api_url" class="col-lg-3 o_light_label"/>
-                                <field name="ebms_api_url"/>
-                            </div>
-                            <div class="row mt16">
-                                <label for="ebms_cancel_url" class="col-lg-3 o_light_label"/>
-                                <field name="ebms_cancel_url"/>
-                            </div>
-                            <div class="row mt16">
-                                <label for="ebms_nif_check_url" class="col-lg-3 o_light_label"/>
-                                <field name="ebms_nif_check_url"/>
-                            </div>
-                            <div class="row mt16">
-                                <label for="ebms_api_token" class="col-lg-3 o_light_label"/>
-                                <field name="ebms_api_token" password="True"/>
-                            </div>
-                            <div class="row mt16">
-                                <label for="ebms_public_key" class="col-lg-3 o_light_label"/>
-                                <field name="ebms_public_key"/>
-                            </div>
-                        </div>
-                    </setting>
-                </block>
+    <setting string="Connexion API EBMS" help="Configurez tous les endpoints et identifiants EBMS.">
+        <div class="content-group">
+            <div class="row mt16"><label for="ebms_api_url" class="col-lg-4 o_light_label"/> <field name="ebms_api_url"/></div>
+            <div class="row mt16"><label for="ebms_api_url_old" class="col-lg-4 o_light_label"/> <field name="ebms_api_url_old"/></div>
+            <div class="row mt16"><label for="ebms_cancel_url" class="col-lg-4 o_light_label"/> <field name="ebms_cancel_url"/></div>
+            <div class="row mt16"><label for="ebms_nif_check_url" class="col-lg-4 o_light_label"/> <field name="ebms_nif_check_url"/></div>
+            <div class="row mt16"><label for="ebms_login_url" class="col-lg-4 o_light_label"/> <field name="ebms_login_url"/></div>
+            <div class="row mt16"><label for="ebms_getinvoice_url" class="col-lg-4 o_light_label"/> <field name="ebms_getinvoice_url"/></div>
+            <div class="row mt16"><label for="ebms_stock_url" class="col-lg-4 o_light_label"/> <field name="ebms_stock_url"/></div>
+            <div class="row mt16"><label for="ebms_api_username" class="col-lg-4 o_light_label"/> <field name="ebms_api_username"/></div>
+            <div class="row mt16"><label for="ebms_api_password" class="col-lg-4 o_light_label"/> <field name="ebms_api_password" password="True"/></div>
+            <div class="row mt16"><label for="ebms_api_token" class="col-lg-4 o_light_label"/> <field name="ebms_api_token" password="True"/></div>
+            <div class="row mt16"><label for="ebms_public_key" class="col-lg-4 o_light_label"/> <field name="ebms_public_key"/></div>
+            <div class="row mt16"><label for="ebms_system_id" class="col-lg-4 o_light_label"/> <field name="ebms_system_id"/></div>
+        </div>
+    </setting>
+    <setting string="Société / Fiscalité EBMS" help="Renseignez les données fiscales et d'identité du contribuable.">
+        <div class="content-group">
+            <div class="row mt16"><label for="ebms_tp_tin" class="col-lg-4 o_light_label"/> <field name="ebms_tp_tin"/></div>
+            <div class="row mt16"><label for="ebms_tp_name" class="col-lg-4 o_light_label"/> <field name="ebms_tp_name"/></div>
+            <div class="row mt16"><label for="ebms_tp_type" class="col-lg-4 o_light_label"/> <field name="ebms_tp_type"/></div>
+            <div class="row mt16"><label for="ebms_tp_trade_number" class="col-lg-4 o_light_label"/> <field name="ebms_tp_trade_number"/></div>
+            <div class="row mt16"><label for="ebms_tp_postal_number" class="col-lg-4 o_light_label"/> <field name="ebms_tp_postal_number"/></div>
+            <div class="row mt16"><label for="ebms_tp_phone_number" class="col-lg-4 o_light_label"/> <field name="ebms_tp_phone_number"/></div>
+            <div class="row mt16"><label for="ebms_tp_fiscal_center" class="col-lg-4 o_light_label"/> <field name="ebms_tp_fiscal_center"/></div>
+            <div class="row mt16"><label for="ebms_tp_activity_sector" class="col-lg-4 o_light_label"/> <field name="ebms_tp_activity_sector"/></div>
+            <div class="row mt16"><label for="ebms_tp_legal_form" class="col-lg-4 o_light_label"/> <field name="ebms_tp_legal_form"/></div>
+        </div>
+    </setting>
+    <setting string="Adresses EBMS" help="Déclarez l'adresse complète du contribuable.">
+        <div class="content-group">
+            <div class="row mt16"><label for="ebms_tp_address_province" class="col-lg-4 o_light_label"/> <field name="ebms_tp_address_province"/></div>
+            <div class="row mt16"><label for="ebms_tp_address_commune" class="col-lg-4 o_light_label"/> <field name="ebms_tp_address_commune"/></div>
+            <div class="row mt16"><label for="ebms_tp_address_quartier" class="col-lg-4 o_light_label"/> <field name="ebms_tp_address_quartier"/></div>
+            <div class="row mt16"><label for="ebms_tp_address_avenue" class="col-lg-4 o_light_label"/> <field name="ebms_tp_address_avenue"/></div>
+            <div class="row mt16"><label for="ebms_tp_address_rue" class="col-lg-4 o_light_label"/> <field name="ebms_tp_address_rue"/></div>
+            <div class="row mt16"><label for="ebms_tp_address_number" class="col-lg-4 o_light_label"/> <field name="ebms_tp_address_number"/></div>
+        </div>
+    </setting>
+    <setting string="Options fiscales EBMS" help="Déclarez l'assujettissement TVA, TC, PFL.">
+        <div class="content-group">
+            <div class="row mt16"><label for="ebms_vat_taxpayer" class="col-lg-4 o_light_label"/> <field name="ebms_vat_taxpayer"/></div>
+            <div class="row mt16"><label for="ebms_ct_taxpayer" class="col-lg-4 o_light_label"/> <field name="ebms_ct_taxpayer"/></div>
+            <div class="row mt16"><label for="ebms_tl_taxpayer" class="col-lg-4 o_light_label"/> <field name="ebms_tl_taxpayer"/></div>
+        </div>
+    </setting>
+</block>
             </xpath>
         </field>
     </record>

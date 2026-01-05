@@ -1,55 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="view_move_form_inherit_ebms" model="ir.ui.view">
-        <field name="name">stock.move.form.inherit.ebms</field>
-        <field name="model">stock.move</field>
-        <field name="inherit_id" ref="stock.view_move_form"/>
-        <field name="arch" type="xml">
-            <xpath expr="//header" position="inside">
-                <button name="action_send_ebms_stock_movement"
-                        type="object"
-                        string="Envoyer à EBMS"
-                        class="btn-primary"
-                        states="draft,assigned,confirmed,done"
-                        invisible="ebms_stock_status == 'sent' or ebms_stock_status == 'error'"/>
-
-<!-- Bouton Annuler EBMS -->
-<button name="action_cancel_ebms_stock_movement"
-        type="object"
-        string="Annuler EBMS"
-        class="btn-danger"
-        states="draft,assigned,confirmed,done"
-        invisible="ebms_stock_status != 'sent'"
-        confirm="Êtes-vous sûr de vouloir annuler ce mouvement côté EBMS ?"/>
-
-<!-- Bouton Consulter EBMS -->
-<button name="action_get_ebms_stock_movement"
-        type="object"
-        string="Consulter EBMS"
-        class="btn-secondary"
-        states="draft,assigned,confirmed,done"
-        invisible="not ebms_stock_reference"
-        confirm="Voulez-vous consulter les informations EBMS de ce mouvement ?"/>
-
-<!-- Bouton Vérifier Signature -->
-<button name="action_check_signature_ebms_stock_movement"
-        type="object"
-        string="Vérifier Signature EBMS"
-        class="btn-secondary"
-        states="draft,assigned,confirmed,done"
-        invisible="not ebms_stock_signature"
-        confirm="Voulez-vous vérifier la signature EBMS de ce mouvement ?"/>
-
-<field name="ebms_stock_status"/>
-<field name="ebms_stock_reference" invisible="not ebms_stock_reference"/>
-<field name="ebms_stock_sent_date" invisible="not ebms_stock_sent_date"/>
-<field name="ebms_stock_error_message" invisible="not ebms_stock_error_message" widget="text"/>
-            </xpath>
-            <xpath expr="//group" position="inside">
-                <field name="ebms_stock_status"/>
-                <field name="ebms_stock_reference" invisible="not ebms_stock_reference"/>
-                <field name="ebms_stock_sent_date" invisible="not ebms_stock_sent_date"/>
-                <field name="ebms_stock_error_message" invisible="not ebms_stock_error_message" widget="text"/>
-            </xpath>
-        </field>
-    </record>
+    <data>
+        <record id="view_stock_move_form_inherit_ebms" model="ir.ui.view">
+            <field name="name">stock.move.form.inherit.ebms</field>
+            <field name="model">stock.move</field>
+            <field name="inherit_id" ref="stock.view_move_form"/>
+            <field name="arch" type="xml">
+                <!-- Ajouter le bouton dans le header -->
+                <xpath expr="//header" position="inside">
+                    <button name="action_send_ebms_stock_movement"
+                            type="object"
+                            string="Envoyer à EBMS"
+                            class="btn-primary"
+                            invisible="state not in ('draft','assigned','confirmed','done') or ebms_stock_status in ('sent','error')"/>
+                </xpath>
+                
+                <!-- Ajouter les champs EBMS dans un groupe existant -->
+                <xpath expr="//sheet/group" position="inside">
+                    <group string="EBMS Information" name="ebms_group">
+                        <field name="ebms_stock_status"/>
+                        <field name="ebms_stock_reference" invisible="not ebms_stock_reference"/>
+                        <field name="ebms_stock_sent_date" invisible="not ebms_stock_sent_date"/>
+                        <field name="ebms_stock_error_message" invisible="not ebms_stock_error_message" widget="text"/>
+                    </group>
+                </xpath>
+            </field>
+        </record>
+    </data>
 </odoo>

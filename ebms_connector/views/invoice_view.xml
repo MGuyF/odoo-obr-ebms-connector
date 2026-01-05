@@ -24,13 +24,6 @@
                             invisible="move_type not in ['out_invoice', 'out_refund'] or ebms_status == 'draft'"
                             confirm="Êtes-vous sûr de vouloir réinitialiser le statut EBMS ?"/>
                     
-                    <button name="ebms_manual_signature_check" 
-                            type="object" 
-                            string="Vérifier Signature EBMS" 
-                            class="btn-secondary"
-                            invisible="not ebms_signature"
-                            confirm="Ceci va vérifier la validité de la signature électronique avec la clé publique de l'OBR. Continuer ?"/>
-
                     <!-- Bouton Consulter EBMS (unique, méthode réelle) -->
 <button name="action_get_ebms_invoice"
         type="object"

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_stock_move_ebms_root" name="Mouvements de stock EBMS" parent="stock.menu_stock_warehouse_mgmt" sequence="100"/>
+    <menuitem id="menu_stock_move_ebms" name="Tous les mouvements EBMS" parent="menu_stock_move_ebms_root" action="action_stock_move_ebms" sequence="10"/>
+
+    <record id="action_stock_move_ebms" model="ir.actions.act_window">
+        <field name="name">Mouvements de stock EBMS</field>
+        <field name="res_model">stock.move</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[]</field>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p>
+                Créez, consultez et testez facilement les mouvements de stock pour EBMS.<br/>
+                <b>Conseil :</b> Utilisez ce menu pour accéder directement aux formulaires "stock.move" et déclencher les boutons EBMS.
+            </p>
+        </field>
+    </record>
+</odoo>

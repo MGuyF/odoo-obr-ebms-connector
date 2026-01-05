@@ -103,15 +103,23 @@ class AccountMoveInherit(models.Model):
                 record.message_post(body=f"[EBMS API Response] {json.dumps(result, ensure_ascii=False)}")
                 
                 if result.get('success'):
+                    # Correction pour mode demo : récupérer la référence et la signature même si elles sont dans result_data
+                    def _first_non_empty(*args):
+                        for v in args:
+                            if v:
+                                return v
+                        return ''
+                    ref = _first_non_empty(result.get('reference'), result.get('result_data', {}).get('reference', '') if result.get('result_data') else '')
+                    sig = _first_non_empty(result.get('electronic_signature'), result.get('result_data', {}).get('electronic_signature', '') if result.get('result_data') else '')
                     record.write({
                         'ebms_status': 'sent',
-                        'ebms_reference': result.get('reference'),
-                        'ebms_signature': result.get('electronic_signature'),
-                        'ebms_sent_date': fields.Datetime.now(),
+                        'ebms_reference': ref,
                         'ebms_error_message': False,
-                        'ebms_result_data': json.dumps(result.get('result_data'), ensure_ascii=False)
+                        'ebms_sent_date': fields.Datetime.now(),
+                        'ebms_signature': sig,
+                        'ebms_result_data': json.dumps(result, ensure_ascii=False),
                     })
-                    message = _('Facture envoyée avec succès vers EBMS. Référence: %s') % result.get('reference')
+                    message = _('Facture envoyée avec succès vers EBMS. Référence: %s') % ref
                     record.message_post(body=message)
                 else:
                     record.write({
@@ -347,7 +355,9 @@ class AccountMoveInherit(models.Model):
             _logger.info('EBMS DEMO: Réponse JSON décodée = %s', resp_json)
             _logger.info('EBMS API Response: %s', resp_json)
 
-            if resp_json.get('success'):
+            # Patch pour compatibilité demo : succès si 'success' ou (demo et 'result')
+            is_demo_success = (url and '/ebms/demo/' in url and resp_json.get('result'))
+            if resp_json.get('success') or is_demo_success:
                 result_data = resp_json.get('result', {})
                 return {
                     'success': True,

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_picking_form_inherit_ebms_move_link" model="ir.ui.view">
+        <field name="name">stock.picking.form.inherit.ebms.move.link</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='move_ids_without_package']/tree/field[@name='product_id']" position="after">
+                <button name="open_move_form_ebms" type="object" icon="fa-external-link" string="Fiche détaillée"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

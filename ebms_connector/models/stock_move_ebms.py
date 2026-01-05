@@ -8,6 +8,19 @@ _logger = logging.getLogger(__name__)
 class StockMoveEBMS(models.Model):
     _inherit = 'stock.move'
 
+    def open_move_form_ebms(self):
+        """
+        Action serveur pour ouvrir la fiche détaillée du mouvement depuis le bouton dans le picking.
+        """
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'stock.move',
+            'view_mode': 'form',
+            'res_id': self.id,
+            'target': 'current',
+        }
+
     ebms_stock_status = fields.Selection([
         ('draft', 'Brouillon'),
         ('sent', 'Envoyé à EBMS'),
