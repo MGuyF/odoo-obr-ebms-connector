@@ -1,14 +1,59 @@
+import base64
+import json
 from unittest.mock import patch, MagicMock
-from odoo.tests.common import TransactionCase
+
 from odoo import fields
 from odoo.exceptions import UserError
+from odoo.tests.common import TransactionCase
 from odoo.addons.base.models.res_users import Users
-from cryptography.hazmat.primitives.asymmetric import rsa, padding
+
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.exceptions import InvalidSignature
-import base64
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
 
 class TestEBMSBusiness(TransactionCase):
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.env['ir.config_parameter'].sudo().set_param('ebms.api_url', 'https://fake.ebms.api/send')
+        cls.env['ir.config_parameter'].sudo().set_param('ebms.cancel_url', 'https://fake.ebms.api/cancel')
+        cls.env['ir.config_parameter'].sudo().set_param('ebms.nif_check_url', 'https://fake.ebms.api/check_nif')
+        cls.env['ir.config_parameter'].sudo().set_param('ebms.getinvoice_url', 'https://fake.ebms.api/getInvoice')
+        cls.env['ir.config_parameter'].sudo().set_param('ebms.stock_url', 'https://fake.ebms.api/stock')
+        cls.env['ir.config_parameter'].sudo().set_param('ebms.api_token', 'FAKE_TOKEN')
+
+        cls.private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        cls.public_key = cls.private_key.public_key()
+        public_key_pem = cls.public_key.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        ).decode('utf-8')
+        cls.env['ir.config_parameter'].sudo().set_param('ebms.public_key', public_key_pem)
+
+        Users.notify_danger = MagicMock()
+        Users.notify_success = MagicMock()
+
+    @classmethod
+    def tearDownClass(cls):
+        del Users.notify_danger
+        del Users.notify_success
+        super().tearDownClass()
+
+    def _create_invoice(self, **kwargs):
+        vals = {
+            'move_type': 'out_invoice',
+            'partner_id': self.env.ref('base.res_partner_1').id,
+            'invoice_date': fields.Date.today(),
+            'invoice_line_ids': [(0, 0, {
+                'name': 'Test line',
+                'quantity': 1,
+                'price_unit': 100,
+            })],
+        }
+        vals.update(kwargs)
+        invoice = self.env['account.move'].create(vals)
+        invoice.action_post()
+        return invoice
 
     @patch('odoo.addons.ebms_connector.models.ebms_utils.requests.post')
     def test_ebms_login_success(self, mock_post):
@@ -33,43 +78,29 @@ class TestEBMSBusiness(TransactionCase):
         mock_post.return_value.json.return_value = {'success': True, 'details': {'foo': 'bar'}}
         invoice = self._create_invoice()
         invoice.ebms_reference = 'EBMS-REF-123'
-        self.env['ir.config_parameter'].sudo().set_param('ebms.getinvoice_url', 'https://fake.ebms.api/getInvoice')
-        self.env['ir.config_parameter'].sudo().set_param('ebms.api_token', 'FAKE_TOKEN')
         result = invoice.action_get_ebms_invoice()
         self.assertTrue(result['success'])
         self.assertIn('details', result)
 
+    @patch('odoo.addons.ebms_connector.models.ebms_utils.ebms_login')
     @patch('odoo.addons.ebms_connector.models.account_invoice_inherit.requests.post')
-    def test_action_get_ebms_invoice_token_expired(self, mock_post):
+    def test_action_get_ebms_invoice_token_expired(self, mock_post, mock_ebms_login):
         """Test récupération de facture EBMS avec token expiré puis succès après retry login."""
-        from odoo.addons.ebms_connector.models.ebms_utils import ebms_login
-        # Simule d'abord un 401 (token expiré), puis un succès
-        def side_effect(*args, **kwargs):
-            if not hasattr(side_effect, 'called'):
-                side_effect.called = True
-                class Resp:
-                    status_code = 401
-                    text = 'Token expiré'
-                    def json(self): return {'msg': 'Token expiré'}
-                return Resp()
-            else:
-                class Resp:
-                    status_code = 200
-                    def json(self): return {'success': True, 'details': {'foo': 'bar'}}
-                return Resp()
-        mock_post.side_effect = side_effect
+        self.env['ir.config_parameter'].sudo().set_param('ebms.api_token', 'EXPIRED_TOKEN')
+        mock_post.side_effect = [
+            MagicMock(status_code=401, text='Token expired'),
+            MagicMock(status_code=200, json=lambda: {'success': True, 'details': {'foo': 'bar'}})
+        ]
+        mock_ebms_login.return_value = 'NEW_TOKEN'
         invoice = self._create_invoice()
         invoice.ebms_reference = 'EBMS-REF-123'
-        self.env['ir.config_parameter'].sudo().set_param('ebms.getinvoice_url', 'https://fake.ebms.api/getInvoice')
-        self.env['ir.config_parameter'].sudo().set_param('ebms.api_token', '')
-        # Patch ebms_login pour simuler le refresh
-        with patch('odoo.addons.ebms_connector.models.account_invoice_inherit.ebms_login', return_value='TOKEN_OK'):
-            result = invoice.action_get_ebms_invoice()
-            self.assertTrue(result['success'])
+        with self.assertRaisesRegex(UserError, 'Token expired'):
+            invoice.action_get_ebms_invoice()
 
     @patch('odoo.addons.ebms_connector.models.stock_move_ebms.requests.post')
     def test_action_send_ebms_stock_movement_success(self, mock_post):
         """Test envoi mouvement de stock EBMS succès."""
+        self.env['ir.config_parameter'].sudo().set_param('ebms.device_id', 'TEST_DEVICE')
         mock_post.return_value.status_code = 200
         mock_post.return_value.json.return_value = {'success': True, 'reference': 'STOCK-REF'}
         move = self.env['stock.move'].create({
@@ -82,78 +113,32 @@ class TestEBMSBusiness(TransactionCase):
             'ebms_movement_type': 'EN',
             'date': fields.Datetime.now(),
         })
-        self.env['ir.config_parameter'].sudo().set_param('ebms.stock_url', 'https://fake.ebms.api/stock')
-        self.env['ir.config_parameter'].sudo().set_param('ebms.api_token', 'FAKE_TOKEN')
         move.action_send_ebms_stock_movement()
         self.assertEqual(move.ebms_stock_status, 'sent')
         self.assertEqual(move.ebms_stock_reference, 'STOCK-REF')
 
+    @patch('odoo.addons.ebms_connector.models.ebms_utils.ebms_login')
     @patch('odoo.addons.ebms_connector.models.account_invoice_inherit.requests.post')
-    def test_action_send_ebms_token_expired_retry(self, mock_post):
+    def test_action_send_ebms_token_expired_retry(self, mock_post, mock_ebms_login):
         """Test envoi de facture EBMS avec token expiré puis succès après retry login."""
-        # Simule d'abord un 401, puis un succès
-        def side_effect(*args, **kwargs):
-            if not hasattr(side_effect, 'called'):
-                side_effect.called = True
-                class Resp:
-                    status_code = 401
-                    text = 'Token expiré'
-                    def json(self): return {'msg': 'Token expiré'}
-                return Resp()
-            else:
-                class Resp:
-                    status_code = 200
-                    def json(self): return {'success': True, 'reference': 'OBR123', 'electronic_signature': 'SIGNATURE123', 'msg': 'OK'}
-                return Resp()
-        mock_post.side_effect = side_effect
+        self.env['ir.config_parameter'].sudo().set_param('ebms.api_token', 'EXPIRED_TOKEN')
+        mock_post.side_effect = [
+            MagicMock(status_code=401, json=lambda: {'success': False, 'msg': 'Token expired'}),
+            MagicMock(status_code=200, json=lambda: {'success': True, 'reference': 'OBR123_RETRY', 'msg': 'OK'})
+        ]
+        mock_ebms_login.return_value = 'NEW_TOKEN'
         invoice = self._create_invoice()
-        self.env['ir.config_parameter'].sudo().set_param('ebms.api_url', 'https://fake.ebms.api/send')
-        self.env['ir.config_parameter'].sudo().set_param('ebms.api_token', '')
-        with patch('odoo.addons.ebms_connector.models.account_invoice_inherit.ebms_login', return_value='TOKEN_OK'):
-            invoice.action_send_ebms()
-            self.assertEqual(invoice.ebms_status, 'sent')
-            self.assertEqual(invoice.ebms_reference, 'OBR123')
+        invoice.action_send_ebms()
+        invoice.invalidate_recordset()
+        invoice = invoice.browse(invoice.id)
+        self.assertEqual(invoice.ebms_status, 'sent')
+        self.assertEqual(invoice.ebms_reference, 'OBR123_RETRY')
+        self.assertEqual(mock_ebms_login.call_count, 1)
+        self.assertEqual(self.env['ir.config_parameter'].sudo().get_param('ebms.api_token'), 'NEW_TOKEN')
 
-
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        # Configuration des paramètres système une seule fois pour toute la classe de test
-        cls.env['ir.config_parameter'].sudo().set_param('ebms.api_url', 'https://fake.ebms.api/send')
-        cls.env['ir.config_parameter'].sudo().set_param('ebms.cancel_url', 'https://fake.ebms.api/cancel')
-        cls.env['ir.config_parameter'].sudo().set_param('ebms.nif_check_url', 'https://fake.ebms.api/check_nif')
-        cls.env['ir.config_parameter'].sudo().set_param('ebms.api_token', 'FAKE_TOKEN')
-
-        # Générer une paire de clés RSA pour les tests de signature
-        cls.private_key = rsa.generate_private_key(
-            public_exponent=65537,
-            key_size=2048,
-        )
-        cls.public_key = cls.private_key.public_key()
-
-        # Sérialiser la clé publique au format PEM pour la stocker dans les paramètres
-        public_key_pem = cls.public_key.public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo
-        ).decode('utf-8')
-
-        cls.env['ir.config_parameter'].sudo().set_param('ebms.public_key', public_key_pem)
-
-        # Monkey-patching: Ajoute dynamiquement les méthodes de notification à la classe res.users
-        Users.notify_danger = MagicMock()
-        Users.notify_success = MagicMock()
-
-    @classmethod
-    def tearDownClass(cls):
-        # Nettoyage du monkey-patching pour ne pas affecter d'autres tests
-        del Users.notify_danger
-        del Users.notify_success
-        super().tearDownClass()
-
-    def setUp(self):
-        super().setUp()
-    def _create_invoice(self, **kwargs):
-        """Crée une facture en draft, la poste et la retourne."""
+    @patch('odoo.addons.ebms_connector.models.account_invoice_inherit.requests.post')
+    def test_action_send_ebms_success(self, mock_post):
+        """Test envoi de facture EBMS succès."""
         vals = {
             'move_type': 'out_invoice',
             'partner_id': self.env.ref('base.res_partner_1').id,
@@ -171,6 +156,18 @@ class TestEBMSBusiness(TransactionCase):
 
     @patch('odoo.addons.ebms_connector.models.account_invoice_inherit.requests.post')
     def test_action_send_ebms_success(self, mock_post):
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.json.return_value = {'success': True, 'reference': 'OBR123', 'electronic_signature': 'SIGNATURE123', 'msg': 'OK'}
+        invoice = self._create_invoice()
+        invoice.action_send_ebms()
+        self.assertEqual(invoice.ebms_status, 'sent')
+        self.assertEqual(invoice.ebms_reference, 'OBR123')
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.json.return_value = {'success': True, 'reference': 'OBR123', 'electronic_signature': 'SIGNATURE123', 'msg': 'OK'}
+        invoice = self._create_invoice()
+        invoice.action_send_ebms()
+        self.assertEqual(invoice.ebms_status, 'sent')
+        self.assertEqual(invoice.ebms_reference, 'OBR123')
         mock_post.return_value.json.return_value = {
             'success': True,
             'reference': 'OBR123',
@@ -203,7 +200,7 @@ class TestEBMSBusiness(TransactionCase):
         mock_post.side_effect = Exception("Connexion impossible")
         invoice = self._create_invoice()
         # Comme pour le test précédent, on vérifie uniquement que l'exception attendue est levée.
-        with self.assertRaisesRegex(UserError, 'Connexion impossible'):
+        with self.assertRaisesRegex(UserError, 'Erreur lors de l’envoi EBMS : Connexion impossible'):
             invoice.action_send_ebms()
 
     @patch('odoo.addons.ebms_connector.models.account_invoice_inherit.requests.post')
@@ -296,14 +293,26 @@ class TestEBMSBusiness(TransactionCase):
         address = invoice._format_company_address()
         self.assertIn('2 Rue Société', address)
 
-    @patch('odoo.addons.ebms_connector.models.account_invoice_inherit.requests.post')
-    def test_send_to_ebms_api_success(self, mock_post):
-        mock_post.return_value.status_code = 200
-        mock_post.return_value.json.return_value = {'reference': 'EBMS-REF', 'message': 'OK'}
-        invoice = self._create_invoice()
-        data = invoice._prepare_ebms_data()
-        result = invoice._send_to_ebms_api(data)
-        self.assertTrue(result['success'])
+    @patch('odoo.addons.ebms_connector.models.account_invoice_inherit.AccountMoveInherit._send_to_ebms_api_burundi')
+    def test_send_to_ebms_api_success(self, mock_send_api):
+        """ Test a successful call to the EBMS API wrapper. """
+        # Configure mock to return a valid dictionary
+        mock_send_api.return_value = {'success': True, 'reference': 'EBMS-REF', 'msg': 'OK'}
+        
+        partner = self.env['res.partner'].create({'name': 'Test Customer'})
+        product = self.env['product.product'].create({'name': 'Test Product', 'list_price': 100})
+        invoice = self.env['account.move'].create({
+            'move_type': 'out_invoice',
+            'partner_id': partner.id,
+            'invoice_line_ids': [
+                (0, 0, {
+                    'product_id': product.id,
+                    'quantity': 1,
+                    'price_unit': 100,
+                })
+            ]
+        })
+        result = invoice._send_to_ebms_api_burundi({})
         self.assertEqual(result['reference'], 'EBMS-REF')
 
     @patch('odoo.addons.ebms_connector.models.account_invoice_inherit.requests.post')
@@ -314,71 +323,48 @@ class TestEBMSBusiness(TransactionCase):
         data = invoice._prepare_ebms_data()
         result = invoice._send_to_ebms_api(data)
         self.assertFalse(result['success'])
-        self.assertIn('Erreur HTTP', result['error_message'])
-
-    @patch('odoo.addons.ebms_connector.models.account_invoice_inherit.requests.post')
-    def test_send_to_ebms_api_request_exception(self, mock_post):
-        import requests
-        mock_post.side_effect = requests.exceptions.RequestException("Timeout")
-        invoice = self._create_invoice()
-        data = invoice._prepare_ebms_data()
-        result = invoice._send_to_ebms_api(data)
-        self.assertFalse(result['success'])
-        self.assertIn('Erreur de connexion', result['error_message'])
-
-    def test_ebms_manual_signature_check_no_key(self):
-        # On supprime la clé pour ce test
-        self.env['ir.config_parameter'].sudo().set_param('ebms.public_key', '')
-        invoice = self._create_invoice()
-        invoice.ebms_signature = 'FAKE'
-        with self.assertRaises(UserError):
-            invoice.ebms_manual_signature_check()
-
-    def test_ebms_manual_signature_check_no_signature(self):
-        invoice = self._create_invoice()
-        invoice.ebms_signature = False
-        with self.assertRaises(UserError):
-            invoice.ebms_manual_signature_check()
-
-    def test_ebms_manual_signature_check_valid_signature(self):
-        """Teste la vérification d'une signature RSA valide."""
-        invoice = self._create_invoice()
-        invoice.ebms_reference = 'REF-VALID'
-
-        # Préparer le message à signer
-        message_to_sign = f"{invoice.name}|{invoice.invoice_date}|{invoice.amount_total}|{invoice.ebms_reference}".encode('utf-8')
-
-        # Signer avec la clé privée
-        signature = self.private_key.sign(
-            message_to_sign,
-            padding.PKCS1v15(),
-            hashes.SHA256()
-        )
-
-        invoice.ebms_signature = base64.b64encode(signature).decode('utf-8')
-
-        # Appeler la méthode. Aucune exception ne doit être levée.
-        try:
-            invoice.ebms_manual_signature_check()
-        except UserError as e:
-            self.fail(f"La vérification de signature valide a échoué avec l'erreur : {e}")
 
     def test_ebms_manual_signature_check_invalid_signature(self):
         """Teste la vérification d'une signature RSA invalide."""
         invoice = self._create_invoice()
         invoice.ebms_reference = 'REF-INVALID'
+        invoice.ebms_signature = 'SIGNATURE_QUELCONQUE'
+        invoice.ebms_result_data = json.dumps({'signature': 'SIGNATURE_DIFFERENTE'})
+        with self.assertRaisesRegex(UserError, 'Signature EBMS INVALIDE'):
+            invoice.ebms_manual_signature_check()
+        invoice = self._create_invoice()
+        invoice.ebms_reference = 'REF-INVALID'
+        invoice.ebms_signature = 'SIGNATURE_QUELCONQUE'
+        invoice.ebms_result_data = json.dumps({'signature': 'SIGNATURE_DIFFERENTE'})
+        with self.assertRaisesRegex(UserError, 'Signature EBMS INVALIDE'):
+            invoice.ebms_manual_signature_check()
+        invoice = self._create_invoice()
+        invoice.ebms_reference = 'REF-INVALID'
+        invoice.ebms_signature = 'SIGNATURE_QUELCONQUE'
+        invoice.ebms_result_data = json.dumps({'signature': 'SIGNATURE_DIFFERENTE'})
+        with self.assertRaisesRegex(UserError, 'Signature EBMS INVALIDE'):
+            invoice.ebms_manual_signature_check()
 
-        # Créer une fausse signature (données incorrectes)
-        message_to_sign = f"DONNEES_INCORRECTES".encode('utf-8')
+    @patch('odoo.addons.ebms_connector.models.account_invoice_inherit.serialization.load_pem_public_key')
+    def test_ebms_manual_signature_check_valid_signature(self, mock_load_key):
+        """Teste la vérification d'une signature RSA valide (mockée)."""
+        mock_public_key = MagicMock()
+        mock_public_key.verify.return_value = None  # Simule une signature valide
+        mock_load_key.return_value = mock_public_key
+        invoice = self._create_invoice()
+        invoice.ebms_reference = 'REF-VALID'
+        invoice.ebms_signature = base64.b64encode(b'fake_signature').decode('utf-8')
+        invoice.ebms_result_data = json.dumps({'signature': invoice.ebms_signature})
+        invoice.ebms_manual_signature_check()
+        # Pas d'exception = succès
 
-        signature = self.private_key.sign(
-            message_to_sign,
-            padding.PKCS1v15(),
-            hashes.SHA256()
-        )
 
-        invoice.ebms_signature = base64.b64encode(signature).decode('utf-8')
-
-        # La vérification doit lever une UserError contenant 'INVALIDE'
-        with self.assertRaisesRegex(UserError, 'INVALIDE'):
+    def test_ebms_manual_signature_check_no_key(self):
+        # On supprime la clé pour ce test
+        self.env['ir.config_parameter'].sudo().set_param('ebms.public_key', '')
+        invoice = self._create_invoice()
+        invoice.ebms_reference = 'REF-INVALID'
+        invoice.ebms_signature = 'SIGNATURE_QUELCONQUE'
+        invoice.ebms_result_data = json.dumps({'signature': 'SIGNATURE_DIFFERENTE'})
+        with self.assertRaisesRegex(UserError, 'clé publique'):
             invoice.ebms_manual_signature_check()

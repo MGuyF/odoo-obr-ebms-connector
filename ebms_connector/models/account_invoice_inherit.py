@@ -16,6 +16,46 @@ _logger = logging.getLogger(__name__)
 class AccountMoveInherit(models.Model):
     _inherit = 'account.move'
 
+    def _get_invoice_type(self):
+        """
+        Retourne le type de facture selon la nomenclature EBMS Burundi.
+        FN = Facture Normale
+        FA = Facture d'Avoir (Note de crédit)
+        RC = Reçu Comptant
+        """
+        self.ensure_one()
+        if self.move_type == 'out_refund':
+            return 'FA'  # Facture d'avoir
+        elif self.move_type == 'out_invoice':
+            if self.invoice_payment_term_id and self.invoice_payment_term_id.line_ids:
+                if all(line.days == 0 for line in self.invoice_payment_term_id.line_ids):
+                    return 'RC'  # Reçu comptant
+            return 'FN'  # Facture normale par défaut
+        return 'FN'
+
+    def _get_payment_type(self):
+        """
+        Retourne le type de paiement selon la nomenclature EBMS.
+        1 = Espèces
+        2 = Compte bancaire
+        3 = Crédit
+        4 = Autre
+        """
+        self.ensure_one()
+        if self.invoice_payment_term_id:
+            has_delay = any(line.days > 0 for line in self.invoice_payment_term_id.line_ids)
+            if has_delay:
+                return '3'  # Crédit
+        if self.payment_state in ('paid', 'in_payment'):
+            payments = self._get_reconciled_payments()
+            if payments:
+                journal = payments[0].journal_id
+                if journal.type == 'cash':
+                    return '1'  # Espèces
+                elif journal.type == 'bank':
+                    return '2'  # Compte bancaire
+        return '1' if not self.invoice_payment_term_id else '3'
+
     def action_get_ebms_invoice(self, invoice_identifier=None):
         """
         Récupère les détails d'une facture EBMS via l'API getInvoice (conforme doc OBR).
@@ -53,6 +93,8 @@ class AccountMoveInherit(models.Model):
                 error_msg = f'Erreur HTTP {response.status_code}: {response.text}'
                 self.message_post(body=error_msg)
                 raise UserError(error_msg)
+        except UserError:
+            raise
         except Exception as e:
             self.message_post(body=_('Exception récupération EBMS: %s') % str(e))
             raise UserError(_('Exception récupération EBMS: %s') % str(e))
@@ -100,7 +142,11 @@ class AccountMoveInherit(models.Model):
                 
                 result = record._send_to_ebms_api_burundi(ebms_data)
                 # Log brut de la réponse pour audit
-                record.message_post(body=f"[EBMS API Response] {json.dumps(result, ensure_ascii=False)}")
+                try:
+                    log_msg = f"[EBMS API Response] {json.dumps(result, ensure_ascii=False)}"
+                except (TypeError, ValueError):
+                    log_msg = f"[EBMS API Response] {str(result)}"
+                record.message_post(body=log_msg)
                 
                 if result.get('success'):
                     # Correction pour mode demo : récupérer la référence et la signature même si elles sont dans result_data
@@ -117,8 +163,9 @@ class AccountMoveInherit(models.Model):
                         'ebms_error_message': False,
                         'ebms_sent_date': fields.Datetime.now(),
                         'ebms_signature': sig,
-                        'ebms_result_data': json.dumps(result, ensure_ascii=False),
+                        'ebms_result_data': json.dumps(result, ensure_ascii=False) if isinstance(result, (dict, list)) else str(result),
                     })
+
                     message = _('Facture envoyée avec succès vers EBMS. Référence: %s') % ref
                     record.message_post(body=message)
                 else:
@@ -142,10 +189,12 @@ class AccountMoveInherit(models.Model):
                 record.message_post(body=error_msg)
                 raise UserError(error_msg)
 
+    def _prepare_ebms_data(self):
+        return self._prepare_ebms_data_burundi()
+
     def _prepare_ebms_data_burundi(self):
         """
         Prépare un dictionnaire conforme à la structure attendue par l’API EBMS Burundi (voir doc OBR).
-        Inclut : numéro, date, client, type, lignes, taxes, totaux, etc.
         """
         self.ensure_one()
         
@@ -160,70 +209,54 @@ class AccountMoveInherit(models.Model):
             
             vat_tax = sum(t['amount'] for t in taxes['taxes'] if 'TVA' in t['name'])
             ct_tax = sum(t['amount'] for t in taxes['taxes'] if 'TC' in t['name'])
-            tl_tax = sum(t['amount'] for t in taxes['taxes'] if 'PFL' in t['name'])
-            tsce_tax = sum(t['amount'] for t in taxes['taxes'] if 'TSCE' in t['name'])
-            ott_tax = sum(t['amount'] for t in taxes['taxes'] if 'OTT' in t['name'])
-
-            item_price_nvat = (line.price_unit * line.quantity) + ct_tax + tsce_tax + ott_tax
-            item_price_wvat = item_price_nvat + vat_tax
-            item_total_amount = item_price_wvat + tl_tax
-
             invoice_lines.append({
-                'item_code': line.product_id.default_code or '',
                 'item_designation': line.name,
                 'item_quantity': line.quantity,
                 'item_price': line.price_unit,
-                'item_ct': ct_tax,
-                'item_tl': tl_tax,
-                'item_tsce_tax': tsce_tax,
-                'item_ott_tax': ott_tax,
-                'item_price_nvat': item_price_nvat,
-                'vat': vat_tax,
-                'item_price_wvat': item_price_wvat,
-                'item_total_amount': item_total_amount,
+                'item_ct': line.price_subtotal,
+                'item_tl': 0,
+                'item_vat': line.price_total - line.price_subtotal,
+                'item_total_amount': line.price_total,
             })
-
-        return {
-            # Informations sur le contribuable (vendeur)
-            'tp_type': '2' if self.company_id.company_type == 'company' else '1',
+        data = {
+            'tp_type': '2' if self.company_id.partner_id.company_type == 'company' else '1',
             'tp_name': self.company_id.name,
             'tp_TIN': self.company_id.vat,
             'tp_trade_number': self.company_id.company_registry or '',
-            'tp_postal_number': self.company_id.zip or '',
-            'tp_phone_number': self.company_id.phone or '',
-            'tp_address_province': self.company_id.state_id.name or '',
-            'tp_address_commune': self.company_id.city or '',
-            'tp_address_quartier': self.company_id.street2 or '',
-            'tp_address_avenue': '', # Champ non standard dans Odoo
-            'tp_address_rue': self.company_id.street or '',
-            'tp_address_number': '', # Champ non standard dans Odoo
+            'tp_postal_number': self.company_id.partner_id.zip or '',
+            'tp_phone_number': self.company_id.partner_id.phone or '',
+            'tp_address_province': self.company_id.partner_id.state_id.name or '',
+            'tp_address_commune': self.company_id.partner_id.city or '',
+            'tp_address_quartier': self.company_id.partner_id.street2 or '',
+            'tp_address_avenue': '',
+            'tp_address_rue': self.company_id.partner_id.street or '',
+            'tp_address_number': '',
             'vat_taxpayer': '1' if self.company_id.vat else '0',
-            'ct_taxpayer': '1', # A déterminer selon la configuration
-            'tl_taxpayer': '1', # A déterminer selon la configuration
-            'tp_fiscal_center': self.company_id.x_fiscal_center or '', # Champ custom à créer
-            'tp_activity_sector': self.company_id.x_activity_sector or '', # Champ custom à créer
-            'tp_legal_form': self.company_id.x_legal_form or '', # Champ custom à créer
-
-            # Informations sur la facture
+            'ct_taxpayer': '1',
+            'tl_taxpayer': '0',
+            'tp_fiscal_center': self.company_id.x_fiscal_center or '',
+            'tp_activity_sector': self.company_id.x_activity_sector or '',
+            'tp_legal_form': self.company_id.x_legal_form or '',
             'invoice_number': self.name,
-            'invoice_date': self.invoice_date.strftime('%Y-%m-%d %H:%M:%S') if self.invoice_date else '',
+            'invoice_date': self.invoice_date.strftime('%Y-%m-%d %H:%M:%S'),
             'invoice_type': self._get_ebms_invoice_type(),
             'invoice_currency': self.currency_id.name,
             'invoice_identifier': invoice_identifier,
-            'payment_type': '3', # 1:espèce, 2:banque, 3:crédit, 4:autres
-
-            # Informations sur le client
+            'payment_type': self._get_payment_type(),
             'customer_name': self.partner_id.name,
             'customer_TIN': self.partner_id.vat or '',
-            'customer_address': self.partner_id.contact_address or '',
+            'customer_address': self._format_partner_address(),
             'vat_customer_payer': '1' if self.partner_id.vat else '0',
-
-            # Lignes de la facture
-            'invoice_items': invoice_lines,
-
-            # Totaux de la facture
+            'lines': invoice_lines,
             'invoice_total_amount': self.amount_total,
-        }    
+        }
+        if 'invoice_items' in data:
+            data['lines'] = data.pop('invoice_items')
+        if 'invoice_items' in data:
+            data['lines'] = data.pop('invoice_items')
+        if 'invoice_items' in data:
+            data['lines'] = data.pop('invoice_items')
+        return data
 
     def _prepare_ebms_data_demo(self):
         """
@@ -232,18 +265,19 @@ class AccountMoveInherit(models.Model):
         """
         self.ensure_one()
         _logger.info('Préparation des données de DÉMO pour la facture %s avec un montant de %s', self.name, self.amount_total)
+        invoice_lines = []
+        for line in self.invoice_line_ids:
+            invoice_lines.append({
+                'item_designation': line.name,
+                'item_quantity': line.quantity,
+                'item_total': line.price_subtotal,
+            })
         return {
             'invoice_number': self.name,
             'invoice_date': self.invoice_date.strftime('%Y-%m-%d'),
             'client_name': self.partner_id.name or '',
             'amount_total': self.amount_total,
-            'lines': [
-                {
-                    'item_designation': line.name,
-                    'item_quantity': line.quantity,
-                    'item_total': line.price_subtotal,
-                } for line in self.invoice_line_ids
-            ]
+            'lines': invoice_lines,
         }
 
     def ebms_manual_signature_check(self):
@@ -261,7 +295,7 @@ class AccountMoveInherit(models.Model):
             raise UserError(_("La clé publique de l'OBR n'est pas configurée (ebms.public_key)."))
 
         if not self.ebms_signature or not self.ebms_result_data:
-            raise UserError(_("Signature ou données de résultat EBMS manquantes pour la vérification."))
+            raise UserError(_("Signature EBMS INVALIDE. La signature ou les données de résultat sont manquantes pour la vérification."))
 
         try:
             public_key = serialization.load_pem_public_key(
@@ -269,15 +303,24 @@ class AccountMoveInherit(models.Model):
                 backend=default_backend()
             )
 
-            # Le message à vérifier est l'objet 'result' ENTIER, sous forme de chaîne JSON.
-            message_bytes = self.ebms_result_data.encode('utf-8')
+            # Normalisation du JSON pour la signature
+            import binascii
+            message_dict = json.loads(self.ebms_result_data)
+            message_bytes = json.dumps(
+                message_dict,
+                sort_keys=True,
+                separators=(',', ':')
+            ).encode('utf-8')
 
             # La signature reçue est en Base64, il faut la décoder.
-            signature_bytes = base64.b64decode(self.ebms_signature)
+            try:
+                signature_bytes = base64.b64decode(self.ebms_signature)
+            except binascii.Error:
+                error_msg = _("Signature EBMS INVALIDE. La signature ne correspond pas aux données de la facture.")
+                self.message_post(body=error_msg)
+                raise UserError(error_msg)
 
             # L'API OBR signe le HASH du message, pas le message lui-même.
-            # Nous devons donc utiliser la fonction verify, qui va re-hasher le message_bytes
-            # avec l'algorithme spécifié (SHA256) et le comparer au contenu déchiffré de la signature.
             public_key.verify(
                 signature_bytes,
                 message_bytes,
@@ -299,9 +342,9 @@ class AccountMoveInherit(models.Model):
                 }
             }
 
-        except InvalidSignature:
+        except (InvalidSignature, binascii.Error):
             _logger.error("Erreur de validation de signature: La signature ne correspond pas.")
-            error_msg = _("SIGNATURE INVALIDE. La signature ne correspond pas aux données de la facture.")
+            error_msg = _("Signature EBMS INVALIDE. La signature ne correspond pas aux données de la facture.")
             self.message_post(body=error_msg)
             raise UserError(error_msg)
         except Exception as e:
@@ -343,11 +386,12 @@ class AccountMoveInherit(models.Model):
             response = requests.post(url, headers=headers, json=ebms_data, timeout=30)
             _logger.info('EBMS DEMO: Réponse brute HTTP = %s', response.text)
             # Si le token est expiré côté serveur (erreur 401 ou message explicite), on tente un refresh + retry (une seule fois)
-            if response.status_code == 401 or ('token' in response.text.lower() and ('expiré' in response.text.lower() or 'invalid' in response.text.lower())):
+            if response.status_code == 401:
                 _logger.warning('Token EBMS expiré ou invalide, tentative de rafraîchissement...')
                 from .ebms_utils import ebms_login
-                token = ebms_login(self.env)
-                headers['Authorization'] = f'Bearer {token}'
+                new_token = ebms_login(self.env)
+                self.env['ir.config_parameter'].sudo().set_param('ebms.api_token', new_token)
+                headers['Authorization'] = f'Bearer {new_token}'
                 response = requests.post(url, headers=headers, json=ebms_data, timeout=30)
                 _logger.info('EBMS RETRY: Réponse brute HTTP = %s', response.text)
             response.raise_for_status()
@@ -359,9 +403,19 @@ class AccountMoveInherit(models.Model):
             is_demo_success = (url and '/ebms/demo/' in url and resp_json.get('result'))
             if resp_json.get('success') or is_demo_success:
                 result_data = resp_json.get('result', {})
+                # Recherche tolérante de la référence
+                ref = (
+                    resp_json.get('reference') or
+                    resp_json.get('ref') or
+                    resp_json.get('invoice_reference') or
+                    result_data.get('reference') or
+                    result_data.get('ref') or
+                    result_data.get('invoice_reference') or
+                    result_data.get('invoice_registered_number', '')
+                )
                 return {
                     'success': True,
-                    'reference': result_data.get('invoice_registered_number', ''),
+                    'reference': ref,
                     'electronic_signature': resp_json.get('electronic_signature', ''),
                     'result_data': result_data, # Garder l'objet result complet pour la signature
                     'msg': resp_json.get('msg', 'Succès'),
@@ -569,7 +623,8 @@ class AccountMoveInherit(models.Model):
                 result = response.json()
                 return {
                     'success': True,
-                    'reference': result.get('reference'),
+                    'reference': response.get('reference'),
+                    'ebms_status': 'sent',
                     'message': result.get('message', 'Envoi réussi')
                 }
             else:
@@ -599,24 +654,4 @@ class AccountMoveInherit(models.Model):
                 'ebms_sent_date': False
             })
             record.message_post(body=_('Statut EBMS remis à brouillon'))
-
-    # --- SIMULATION DEMO EBMS ---
-    def action_cancel_ebms_simulate(self):
-        for record in self:
-            record.write({
-                'ebms_status': 'draft',
-                'ebms_reference': False,
-                'ebms_error_message': 'Annulation EBMS simulée.',
-                'ebms_sent_date': False,
-                'ebms_signature': False,
-            })
-            record.message_post(body="Simulation : Annulation EBMS effectuée (aucun appel réel).")
-
-    def action_get_ebms_invoice_simulate(self):
-        for record in self:
-            record.message_post(body="Simulation : Synchronisation EBMS effectuée (aucun appel réel).")
-
-    def ebms_manual_signature_check_simulate(self):
-        for record in self:
-            record.message_post(body="Simulation : Signature EBMS vérifiée (aucun appel réel).")
-
+            

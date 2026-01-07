@@ -5,8 +5,11 @@ import logging
 
 _logger = logging.getLogger(__name__)
 
-class StockMoveEBMS(models.Model):
+class StockMove(models.Model):
     _inherit = 'stock.move'
+    _description = 'Stock Move (EBMS Extension)'
+    _description = 'Stock Move (EBMS Extension)'
+
 
     def open_move_form_ebms(self):
         """
@@ -21,6 +24,7 @@ class StockMoveEBMS(models.Model):
             'target': 'current',
         }
 
+    # Champs EBMS spécifiques uniquement
     ebms_stock_status = fields.Selection([
         ('draft', 'Brouillon'),
         ('sent', 'Envoyé à EBMS'),
@@ -75,27 +79,27 @@ class StockMoveEBMS(models.Model):
                             'ebms_stock_error_message': False,
                             'ebms_stock_sent_date': fields.Datetime.now(),
                         })
-                        move.message_post(body=_('Mouvement de stock envoyé avec succès à EBMS.'))
+                        _logger.info('Mouvement de stock envoyé avec succès à EBMS: %s', move.name)
                     else:
                         move.write({
                             'ebms_stock_status': 'error',
                             'ebms_stock_error_message': resp_json.get('msg', 'Erreur inconnue lors de l’envoi EBMS.')
                         })
-                        move.message_post(body=_('Erreur EBMS Stock: %s') % resp_json.get('msg', ''))
+                        _logger.error('Erreur EBMS Stock: %s', resp_json.get('msg', ''))
                         raise UserError(_('Erreur EBMS Stock: %s') % resp_json.get('msg', ''))
                 else:
                     move.write({
                         'ebms_stock_status': 'error',
                         'ebms_stock_error_message': f'Erreur HTTP {response.status_code}: {response.text}'
                     })
-                    move.message_post(body=_('Erreur HTTP EBMS Stock: %s') % response.text)
+                    _logger.error('Erreur HTTP EBMS Stock: %s', response.text)
                     raise UserError(_('Erreur HTTP EBMS Stock: %s') % response.text)
             except Exception as e:
                 move.write({
                     'ebms_stock_status': 'error',
                     'ebms_stock_error_message': str(e)
                 })
-                move.message_post(body=_('Exception lors de l’envoi EBMS Stock: %s') % str(e))
+                _logger.error('Exception lors de l’envoi EBMS Stock: %s', str(e))
                 raise UserError(_('Exception lors de l’envoi EBMS Stock: %s') % str(e))
 
     # Champs EBMS spécifiques au mouvement de stock
